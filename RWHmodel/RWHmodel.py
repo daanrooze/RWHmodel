@@ -17,6 +17,26 @@ class RWHmodel:
         root: str = None,
         name: str = None
     ):
+        """
+        Initialization of RWH model class.
+
+        Parameters
+        ----------
+        root : str, optional
+            DESCRIPTION. The default is None.
+        name : str, optional
+            DESCRIPTION. The default is None.
+
+        Raises
+        ------
+        IOError
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
         if len(root)>0:
             self.root = root
         else:
@@ -34,18 +54,34 @@ class forcing:
     ):
         return
         
-    def read_forcing():
-        #TODO: read forcing data from data catalog
-        self.forcing = df
+    def read_forcing_local(
+        self,
+        forcing_fn: str = None,
+        #TODO: add column names
+        **kwargs    
+    ) -> None:
+        """Reads local forcing data from csv.
+
+        Returns Pandas DataFrame with time series of input forcing
+
+        Parameters
+        ----------
+        forcing_fn : str, default None
+            Precipitation and Potential Evapotranspiration data source.
+        """
+        #TODO: add function to read forcing data from data catalog instead of manual input
         
-        """ 
-        Possibility of adding default forcing data to DATADIR folder.
+        
+         
+        # Possibility of adding default forcing data to DATADIR folder.
         if forcing_fn == None:
             # Resort to default timeseries in DATADIR folder
             #TODO: add link to default data
-            
             pass 
-        """
+        
+        self.forcing = df
+
+    #TODO: add function read_forcing_NOAA and use API (see script Roel)
 
     def check_forcing(
         self,
@@ -66,7 +102,34 @@ class forcing:
             Option to provide basic statistics and forcing graphs in the data output folder.
         """
         if forcing_fn == None:
-            raise IOError(f"No forcing file provided")
+            raise IOError("No forcing file provided")
+            
+        #TODO: rewrite the 3 checks below
+        if not all(item in table.columns for item in ['fclass', 'width_t', 'reclass']):
+                raise IOError("Provide translation table with columns 'fclass', 'width_t', 'reclass'")
+        if not all(item in ['paved_roof', 'closed_paved', 'open_paved', 'unpaved', 'water'] for item in table['reclass']):
+            raise IOError("Valid translation classes are 'paved_roof', 'closed_paved', 'open_paved', 'unpaved', 'water'")
+        if not table['width_t'].dtypes in ['float64', 'int', 'int64']:
+            raise IOError("Provide total width (width_t) values as float or int'")
+        
+    def setup_forcing(
+        self,
+    ):
+        """
+        Returns forcing timeseries to object.
+
+        Parameters
+        ----------
+         : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        self.forcing = df
         
     def write_forcing(
         self,
@@ -96,7 +159,46 @@ class forcing:
         
         if file_format == "csv":
             df.to_csv(path, sep=',', date_format="%d-%m-%Y %H:%M")
+
+
+#%%
+
+
+
+class demand:
+    def __init__(
+        self
+    ):
+        return
+    
+    def read_demand(
+        self,
+    ):
         
+        pass
+    
+    def soil_moisture_model(
+        self,
+    ):
+        
+        pass
+    
+    def setup_demand(
+        self,
+    ):
+        
+        pass
+    
+    def write_demand(
+        self,
+    ):
+        
+        pass
+    
+    
+
+
+
 #%%
         
 class hydro_model:
@@ -201,9 +303,18 @@ class reservoir_model:
 #%%
 
 class analysis:
+    """ Class to perform statistical analysis on RWH output """
     def __init(
         self
-    )
+    ):
+        """
+        Initialization of analysis class.
+
+        Returns
+        -------
+        None.
+
+        """
     
     def func_log(a, b, x):
         return a * np.log(x) + b
@@ -263,33 +374,6 @@ df = pd.DataFrame()
 
 ''' ------- '''
 
-#%%
-
-
-
-class demand_model:
-    def __init__(self):
-        pass
-    
-    def read_demand:
-        
-        pass
-    
-    def soil_moisture_model:
-        
-        pass
-    
-    def setup_demand:
-        
-        pass
-    
-    def demand_model:
-        
-        pass
-    
-    
-
-
 
 
 
@@ -298,7 +382,11 @@ class demand_model:
 
 #%%
 
-#
+### OLD SCRIPTS ###
+
+
+
+
 ###Bestand: bodem_vocht_model.py
 
 class BodemVochtModel:
