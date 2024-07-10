@@ -8,6 +8,9 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 
+import codecs
+import toml
+
 
 #%%
 
@@ -15,7 +18,8 @@ class RWHmodel:
     def __init__(
         self,
         root: str = None,
-        name: str = None
+        name: str = None,
+        ts: int = 86400
     ):
         """
         Initialization of RWH model class.
@@ -23,14 +27,11 @@ class RWHmodel:
         Parameters
         ----------
         root : str, optional
-            DESCRIPTION. The default is None.
+            Root location of the model. The default is None.
         name : str, optional
-            DESCRIPTION. The default is None.
-
-        Raises
-        ------
-        IOError
-            DESCRIPTION.
+            Run name of the model. The default is None.
+        ts : int
+            Timestep of the calculations in seconds. The default is 86400 seconds (1 day).
 
         Returns
         -------
@@ -45,6 +46,33 @@ class RWHmodel:
             self.name = name
         else:
             raise IOError(f"Provide model run name")
+        self.ts = ts
+
+#%%
+
+class area_characteristics:
+    def __init__(
+        self
+    ):
+        return
+    
+    def read_area_characteristics(
+        self,
+        area_chars_fn,
+    ):    
+        with codecs.open(area_chars_fn, "r", encoding="utf-8") as f:
+            area_chars = toml.load(f)
+        area_chars = pd.read_csv(area_chars_fn)
+        return area_chars
+
+    def setup_area_characteristics(
+        self,
+        area_chars_fn,
+    ):
+        area_chars = self.read_area_characteristics(area_chars_fn)
+        self.area_chars = area_chars
+        
+
 
 #%%
 
@@ -54,11 +82,10 @@ class forcing:
     ):
         return
         
-    def read_forcing_local(
+    def read_forcing(
         self,
         forcing_fn: str = None,
-        #TODO: add column names
-        **kwargs    
+        #TODO: add column names to parse input?
     ) -> None:
         """Reads local forcing data from csv.
 
@@ -70,65 +97,66 @@ class forcing:
             Precipitation and Potential Evapotranspiration data source.
         """
         #TODO: add function to read forcing data from data catalog instead of manual input
-        
-        
-         
-        # Possibility of adding default forcing data to DATADIR folder.
-        if forcing_fn == None:
+        #TODO: Possibility of adding default forcing data to DATADIR folder.
+        #if forcing_fn == None:
             # Resort to default timeseries in DATADIR folder
             #TODO: add link to default data
-            pass 
+            #pass 
         
-        self.forcing = df
+        df = pd.read_csv(forcing_fn, sep=",")
 
-    #TODO: add function read_forcing_NOAA and use API (see script Roel)
+        if not all(item in df.columns for item in ['datetime', 'precip', 'pet']):
+                raise IOError("Provide forcing csv with headers 'datetime', 'precip', 'pet'")
+        if not df['precip'].dtypes in ['float64', 'int', 'int64']:
+            raise IOError("Provide precip values as float or int'")
+        if not df['pet'].dtypes in ['float64', 'int', 'int64']:
+            raise IOError("Provide pet values as float or int'")
+            
+        df["datetime"] =  pd.to_datetime(df["datetime"], format="%d-%m-%Y %H:%M")
+        df = df.set_index('datetime')
+        df = df.resample(f'{self.ts}s', label='right').sum()
+        
+        return df
 
-    def check_forcing(
+
+    #TODO: later, add function "read_forcing_NOAA" and use API (use script Roel)
+
+
+    def statistics_forcing(
         self,
-        forcing_fn: str = None,
         statistics: bool = False,
-        **kwargs    
     ) -> None:
-        """Checks provided forcing data for consistency.
-        Presents basic forcing statistics and plots if requested.
+        """Presents basic forcing statistics and plots.
 
         Returns Pandas DataFrame with time series of input forcing
 
         Parameters
         ----------
-        forcing_fn : str, default None
-            Precipitation and Potential Evapotranspiration data source.
         statistics : bool, default False
             Option to provide basic statistics and forcing graphs in the data output folder.
-        """
-        if forcing_fn == None:
-            raise IOError("No forcing file provided")
-            
-        #TODO: rewrite the 3 checks below
-        if not all(item in table.columns for item in ['fclass', 'width_t', 'reclass']):
-                raise IOError("Provide translation table with columns 'fclass', 'width_t', 'reclass'")
-        if not all(item in ['paved_roof', 'closed_paved', 'open_paved', 'unpaved', 'water'] for item in table['reclass']):
-            raise IOError("Valid translation classes are 'paved_roof', 'closed_paved', 'open_paved', 'unpaved', 'water'")
-        if not table['width_t'].dtypes in ['float64', 'int', 'int64']:
-            raise IOError("Provide total width (width_t) values as float or int'")
-        
+        """        
+        df = self.forcing
+        if statistics == True:
+            #TODO: add possibility to perform basic rainfall/evaporation statistics (not a priority).
+            pass
+        self.forcing = df
+
     def setup_forcing(
         self,
+        forcing_fn,
     ):
         """
         Returns forcing timeseries to object.
 
         Parameters
         ----------
-         : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        None.
-
+        forcing_fn : str, default None
+            Precipitation and Potential Evapotranspiration data source.
         """
+        if forcing_fn == None:
+            raise IOError("No forcing file provided")
         
+        df = self.read_forcing(forcing_fn=forcing_fn)
         self.forcing = df
         
     def write_forcing(
@@ -173,31 +201,71 @@ class demand:
     
     def read_demand(
         self,
-    ):
+        demand_fn: str = None,
+        unit: str = "mm"
+        #TODO: add column names to parse input?
+    ) -> None:
+        """Reads local demand data from csv.
+
+        Returns Pandas DataFrame with time series of input demand forcing.
+
+        Parameters
+        ----------
+        demand_fn : str, default None
+            Demand data source.
+        unit : str, default "mm"
+            Unit of demand.
+        """       
+        df = pd.read_csv(demand_fn, sep=",")
+
+        if not all(item in df.columns for item in ['datetime', 'demand']):
+                raise IOError("Provide demand csv with headers 'datetime', 'demand'")
+        if not df['demand'].dtypes in ['float64', 'int', 'int64']:
+            raise IOError("Provide demand values as float or int'")
+            
+        df["datetime"] =  pd.to_datetime(df["datetime"], format="%d-%m-%Y %H:%M")
+        df = df.set_index('datetime')
+        df = df.resample(f'{self.ts}s', label='right').sum()
         
-        pass
+        demand_units_list = ["mm", "m3"]
+        if unit not in demand_units_list:
+            raise IOError(f"Provide units in format from {demand_units_list} per timestep")
+        if unit == "m3":
+            df['demand'] = df['demand'] / self.area_chars['srf_area ']
+        
+        return df
     
     def soil_moisture_model(
         self,
     ):
-        
+        #TODO: insert Laura's function (or copy from UWBM?)
         pass
     
     def setup_demand(
         self,
+        demand_fn,
     ):
+        """
+        Returns forcing timeseries to object.
+
+        Parameters
+        ----------
+        forcing_fn : str, default None
+            Precipitation and Potential Evapotranspiration data source.
+        """
+        if demand_fn == None:
+            raise IOError("No forcing file provided")
         
-        pass
+        df = self.demand_fn(demand_fn=demand_fn)
+        self.demand = df
     
     def write_demand(
         self,
     ):
-        
+        #TODO: function 
         pass
     
     
-
-
 
 #%%
         
@@ -210,6 +278,8 @@ class hydro_model:
     
     def hydro_model(
         self,
+        precip,
+        pet,
         forcing_fn: str = None,
         surf_char: dict = None
     ) -> None:
@@ -220,24 +290,42 @@ class hydro_model:
 
         Parameters
         ----------
-        forcing_fn : str, default None
-            Precipitation and Potential Evapotranspiration data source.
-        surf_char : str, default None
-            Dictionary with characteristics of the receiving surface data source.
+        p_atm : float 
+            rainfall during current time step [mm]
+        e_pot_ow : float
+            potential open water evaporation during current time step [mm]
+            
+        Returns
+        ----------
+        (dictionary): A dictionary of computed states and fluxes of paved roof during current time step:
+
+        * **int_pr** -- Interception storage on paved roof after rainfall at the beginning of current time step [mm]
+        * **e_atm_pr** -- Evaporation from interception storage on paved roof during current time step [mm]
+        * **intstor_pr** -- Remaining interception storage on paved roof at the end of current time step [mm]
+        * **r_pr_meas** -- Runoff from paved roof to measure during current time step (not necessarily on paved roof itself) [mm]
+        * **r_pr_swds** -- Runoff from paved roof to storm water drainage system (SWDS) during current time step [mm]
+        * **r_pr_mss** -- Runoff from paved roof to combined sewer system (MSS) during current time step [mm]
+        * **r_pr_up** -- Runoff from paved roof to unpaved during current time step [mm]
         """
 
         
         if surf_char == None:
-            # Resort to default timeseries in DATADIR folder
             #TODO: add link to default surface characteristics data.
-            
             pass 
         
         df = forcing_fn
         interception_storage = max(min(0, df['PRECIPITATION'] - df['PET']), surf_char['int_cap'])
         runoff = max(0, df['PRECIPITATION'] - df['PET'] - interception_storage)
         
-        self.runoff = runoff
+        return {
+            "int_pr": int_pr,
+            "e_atm_pr": e_atm_pr,
+            "intstor_pr": intstor_pr,
+            "r_pr_meas": r_pr_meas,
+            "r_pr_swds": r_pr_swds,
+            "r_pr_mss": r_pr_mss,
+            "r_pr_up": r_pr_up,
+        }
 
 
 #%%
@@ -297,7 +385,43 @@ class reservoir_model:
         self.overflow = overflow
         self.gap = gap
         self.storage = storage
+        
+        return {
+            
+        }
 
+
+
+#%%
+
+class model:
+    """ Class to iterate over timesteps with 'hydro_model' and 'reservoir_model' """
+    def __init__(
+        self
+    ):
+        return
+    
+    def running(
+        self
+    ):
+        #datetime = self.forcing['datetime']
+        #precip = self.forcing['precip']
+        #pet = self.forcing['pet']
+        #iters = np.shape(datetime)[0]
+        # Duplicate and expand forcing df to store results.
+        df = self.forcing
+        df['net_precip'] = df['precip'] - df['pet']
+        df['int_stor'] = np.nan
+        df['runoff'] = np.nan
+        df['reservoir_stor'] = np.nan
+        df['reservoir_overflow'] = np.nan
+        df['deficit'] = np.nan
+        
+        # Apply the hydro_model and reservoir_model to return the values of the df columns (see above)
+        df.apply(
+            self.hydro_model.hydro_model(),
+            axis=1
+        )
 
 
 #%%
@@ -405,6 +529,12 @@ class HydrologischAfstroomModel:
         self.oppervlakte = oppervlakte
         self.neerslag = neerslag
         self.afvoer_coefficient = afvoer_coefficient
+        """
+        forcing_fn : str, default None
+            Precipitation and Potential Evapotranspiration data source.
+        surf_char : str, default None
+            Dictionary with characteristics of the receiving surface data source.
+        """
 
     def bereken_afvoer(self):
         # Implementeer hier de berekening voor de afvoer op basis van neerslag en afvoercoëfficiënt
