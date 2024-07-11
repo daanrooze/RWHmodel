@@ -52,9 +52,6 @@ full = ["hydromt_uwbm[doc,dev,test]"]
 Documentation = "https://daanrooze.github.io/rwhmodel"
 Source = "https://github.com/daanrooze/rwhmodel"
 
-[project.entry-points."hydromt.models"] # WHAT TO PUT HERE?
-uwbm = "hydromt_uwbm.uwbm:UWBM"
-
 [tool.black]
 line-length = 88
 target-version = ['py39']

@@ -19,7 +19,7 @@ class RWHmodel:
         self,
         root: str = None,
         name: str = None,
-        ts: int = 86400
+        timestep: int = 86400
     ):
         """
         Initialization of RWH model class.
@@ -41,12 +41,12 @@ class RWHmodel:
         if len(root)>0:
             self.root = root
         else:
-            raise IOError(f"Provide root of model folder")
+            raise ValueError(f"Provide root of model folder")
         if len(name)>0:
             self.name = name
         else:
-            raise IOError(f"Provide model run name")
-        self.ts = ts
+            raise ValueError(f"Provide model run name")
+        self.timestep = timestep
 
 #%%
 
