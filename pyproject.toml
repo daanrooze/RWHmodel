@@ -7,12 +7,10 @@ build-backend = "flit_core.buildapi"
 [project]
 name = "RWHmodel"
 authors = [
-    {name = "Daan Rooze", email = "daan.rooze@deltares.nl"}
+    {name = "Daan Rooze", email = "daan.rooze@deltares.nl"},
     {name = "Laura Nougues", email = "laura.nougues@deltares.nl"}
 ]
 dependencies = [
-    "geopandas>=0.10",   # pandas but geo, wraps fiona and shapely
-    "numba",             # speed up computations (used in e.g. stats)
     "pandas",            # Dataframes
     "tomli",             # parsing toml files
     "tomli-w",           # writing toml files
