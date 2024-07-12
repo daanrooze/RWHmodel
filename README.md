@@ -2,7 +2,7 @@
 
 ## How to install
 
-Use conda/mamba to install the environment for developing
+Use conda/mamba to install the environment for development:
 
 ```
 conda env create -f environment.yml
