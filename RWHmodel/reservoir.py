@@ -13,7 +13,7 @@ class Reservoir():
             self.runoff = state - self.reservoir_volume
             state = self.reservoir_volume
         elif state < 0:
-            self.deficit = abs(state) # make negative number absolute
+            self.deficit = abs(state) # make negative number of deficit an absolute number
             state = 0.0
         self.state = state
         

@@ -21,7 +21,7 @@ class TimeSeries:
         resample: bool = True,
         timestep: Optional[int] = None,
     ) -> pd.DataFrame:
-        df = pd.read_csv(self.fn)
+        df = pd.read_csv(self.fn, sep=",")
 
         if not all(item in df.columns for item in required_headers):
             raise ValueError(
@@ -36,7 +36,7 @@ class TimeSeries:
 
         if resample:
             if not timestep:
-                raise ValueError("timestep is needed for timeseries resample!")
+                raise ValueError("timestep is needed for timeseries resample.")
             df.resample(f"{timestep}s", label="right").sum()
         return df
 
@@ -88,14 +88,17 @@ class Demand(TimeSeries):
         unit: str = "mm",
         area_chars: Optional[dict] = None,
     ):
-        super().__init__(fn=demand_fn, root=root)
-        self.data = self.read_timeseries(
-            file_type="csv",
-            required_headers=["datetime", "demand"],
-            numeric_cols=["demand"],
-            resample=True,
-            timestep=timestep,
-        )
+        if type(demand_fn)==int:
+            pass
+        else:
+            super().__init__(fn=demand_fn, root=root)
+            self.data = self.read_timeseries(
+                file_type="csv",
+                required_headers=["datetime", "demand"],
+                numeric_cols=["demand"],
+                resample=True,
+                timestep=timestep,
+            )
 
         if unit == "m3":  # Convert to mm
             if surface_area := area_chars.get("srf_area"):
@@ -103,16 +106,15 @@ class Demand(TimeSeries):
                     df=self.demand, col="demand", surface_area=surface_area
                 )
             else:
-                raise ValueError("Missing surface area for converting m3 to mm")
+                raise ValueError("Missing surface area for converting m3 per timestep to mm per timestep")
 
-    def statistics(self):
-        raise NotImplementedError
+
 
     def write(self, fn_out):
         self.write_timeseries(df=self.demand, subdir="demand", fn_out=fn_out)
 
 
-class ConstantDemand:
+class ConstantDemand: #TODO: deprecated, moved to Demand class
     def __init__(self, timeseries_df, constant: Union[int, float]) -> None:
         timeseries_df["demand"] = constant
         self.data = timeseries_df[["demand"]]
