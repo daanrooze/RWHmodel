@@ -16,7 +16,7 @@ class Model(object):
         root: str,
         name: str,
         forcing_fn: str,
-        reservoir_volume: float,
+        reservoir_cap: float,
         reservoir_initial_state: float = 0,
         timestep: int = 86400,
         demand_fn: Optional[str] = None,
@@ -44,8 +44,17 @@ class Model(object):
             self.demand = Demand(
                 demand_fn, root, timestep, unit=unit, area_chars=area_chars
             )
-
-        self.reservoir = Reservoir(reservoir_volume, reservoir_initial_state)
+        self.demand.independent_demand = independent_demand
+        
+        # Setup of area characteristics
+        self.int_cap = 2 #mm - placeholder interception storage capacity (later change to setup from config)
+        
+        # Initiate hydro_model
+        self.hydro_model = HydroModel(self.int_cap) #TODO: later change to fetch from area_chars
+        
+        # Initiate reservoir
+        self.reservoir = Reservoir(reservoir_cap, reservoir_initial_state)
+        
 
     def setup_from_config(self, config_fn):
         # TODO: parse config with code from config.py and call self.setup with arguments from config
@@ -66,12 +75,31 @@ class Model(object):
         df['reservoir_overflow'] = np.nan  # reservoir overflow
         df['deficit'] = np.nan             # deficit: original demand that cannot be met
 
-        
-        #flux = net_precip - self.demand.data 
+
+        # Other way, using numpy arrays
+        #old: flux = net_precip - self.demand.data 
         ### initialize numpy arrays for deficit, runoff, and storage
-        #deficit = np.zeros(net_precip.shape[0])
-        #runoff = np.zeros(net_precip.shape[0])
-        #storage = np.zeros(net_precip.shape[0])
+        # int_stor = np.zeros(self.forcing.data["net_precip"].shape[0])
+        # runoff = np.zeros(self.forcing.data["net_precip"].shape[0])
+        # reservoir_stor = np.zeros(self.forcing.data["net_precip"].shape[0])
+        # reservoir_overflow = np.zeros(self.forcing.data["net_precip"].shape[0])
+        # deficit = np.zeros(self.forcing.data["net_precip"].shape[0])
         
         # TODO: implement iteration over fluxes and update reservoir
         # iterate over timesteps using hydro_model
+        
+        #test_df = HydroModel()
+        
+        # Using apply function:
+        # Using apply to calculate sum, product, and difference and update the DataFrame
+        df['int_cap'] = 2 # create column with interception capacity for apply() function
+        df[['int_stor', 'runoff']] = df.apply(HydroModel.update_state, axis=1)
+        #df = df.apply(HydroModel.update_state(self), axis=1, raw=False, engine="python")
+        #df = df.apply(Reservoir, axis=1, raw=False, engine="python")
+        
+        #TODO: probably quicker to calculate in np.array, and after calculations transform to df and insert datetime again.
+        
+        
+        
+        
+

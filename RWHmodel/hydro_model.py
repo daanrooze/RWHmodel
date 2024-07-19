@@ -1,72 +1,49 @@
 
-class HydroModel():    
-    def __init__(self, reservoir_volume: float, state: float = 0.0):
-        self.reservoir_volume =  reservoir_volume
-        self.state = state
-        self.runoff = 0
-        self.deficit = 0
 
-    def update_state(self, flux):
-        state = self.state + flux
-        if state > self.reservoir_volume:
-            self.runoff = state - self.reservoir_volume
-            state = self.reservoir_volume
-        elif state < 0:
-            self.deficit = abs(state) # make negative number of deficit an absolute number
-            state = 0.0
-        self.state = state
-        
-#TODO: implement independent_demand: when True, demand stops when res is empty
-        
+### TRADITION LOOP IN THIS CELL
+
+class HydroModel():    
+    def __init__(self, int_cap):
+        self.int_cap = int_cap
+
+    def update_state(self, int_stor, net_precip):
+        # Calculate the interception storage at this timestep
+        int_stor = max(min(int_stor + net_precip, self.int_cap), 0)
+        # Calculate the runoff at this timestep
+        runoff = max(0, net_precip - int_stor)
+
+        return {
+            'int_stor': int_stor,
+            'runoff': runoff
+        }
+
+
 #%%
 
-def hydro_model(
-        self,
-        precip,
-        pet,
-        forcing_fn: str = None,
-        surf_char: dict = None
-    ) -> None:
-        """Calculate time-series of runoff based on input forcing hydrology (precipitation, PET) and
-        receiving surface area characteristics.
+### TRYING WITH APPLY() FUNCTION IN THIS CELL
 
-        Returns Pandas DataFrame
+import pandas as pd
 
-        Parameters
-        ----------
-        p_atm : float 
-            rainfall during current time step [mm]
-        e_pot_ow : float
-            potential open water evaporation during current time step [mm]
-            
-        Returns
-        ----------
-        (dictionary): A dictionary of computed states and fluxes of paved roof during current time step:
-
-        * **int_pr** -- Interception storage on paved roof after rainfall at the beginning of current time step [mm]
-        * **e_atm_pr** -- Evaporation from interception storage on paved roof during current time step [mm]
-        * **intstor_pr** -- Remaining interception storage on paved roof at the end of current time step [mm]
-        * **r_pr_meas** -- Runoff from paved roof to measure during current time step (not necessarily on paved roof itself) [mm]
-        * **r_pr_swds** -- Runoff from paved roof to storm water drainage system (SWDS) during current time step [mm]
-        * **r_pr_mss** -- Runoff from paved roof to combined sewer system (MSS) during current time step [mm]
-        * **r_pr_up** -- Runoff from paved roof to unpaved during current time step [mm]
-        """
-
-        
-        if surf_char == None:
-            #TODO: add link to default surface characteristics data.
-            pass 
-        
-        df = forcing_fn
-        interception_storage = max(min(0, df['PRECIPITATION'] - df['PET']), surf_char['int_cap'])
-        runoff = max(0, df['PRECIPITATION'] - df['PET'] - interception_storage)
-        
-        return {
-            "int_pr": int_pr,
-            "e_atm_pr": e_atm_pr,
-            "intstor_pr": intstor_pr,
-            "r_pr_meas": r_pr_meas,
-            "r_pr_swds": r_pr_swds,
-            "r_pr_mss": r_pr_mss,
-            "r_pr_up": r_pr_up,
-        }
+class HydroModel:
+    def __init__(self, int_cap):
+        self.int_cap = int_cap
+    
+    def update_state(row):
+        # Calculate the interception storage at this timestep
+        int_stor = min(max(0, row['net_precip']), row['int_cap']) #TODO: how to refer to row above? Difficult with apply function
+        # Calculate the runoff at this timestep
+        runoff = max(0, row['net_precip'] - int_stor)
+        return pd.Series({
+            'int_stor': int_stor,
+            'runoff': runoff
+        })
+    
+    """
+    def update_state(self, row):
+        int_stor = min(max(0, row['net_precip']), self.int_cap)
+        runoff = max(0, row['net_precip'] - int_stor)
+        return pd.Series({
+            'intstor': int_stor,
+            'runoff': runoff
+        })
+    """
