@@ -1,5 +1,6 @@
 from typing import Optional
 import numpy as np
+import pandas as pd
 
 from RWHmodel.reservoir import Reservoir
 from RWHmodel.timeseries import ConstantDemand, Demand, Forcing
@@ -98,8 +99,38 @@ class Model(object):
         #df = df.apply(Reservoir, axis=1, raw=False, engine="python")
         
         #TODO: probably quicker to calculate in np.array, and after calculations transform to df and insert datetime again.
+
+
+
+
+    def batch_run(self, method, reservoir_range, demand_range, T_range=[1,2,5,10,20,50,100]):
+        # Batch run function to obtain solution space and statistics on output.
+        methods = ["average_days", "consecutive_days"]
+        if method not in methods:
+            raise ValueError(
+                f"Provide valid method from {methods}."
+            )
+        if not isinstance(reservoir_range, list) or not isinstance(demand_range, list) or not isinstance(T_range, list):
+            raise ValueError(
+                "Provide reservoir_range and demand_range as lists."
+            )
         
+        if method == "consecutive_days":
+            df_system = pd.DataFrame(columns = T_range)
+            df_system["reservoir_capacity"] = reservoir_range
+            df_system = df_system.set_index("reservoir_capacity")
         
+        for reservoir_cap in reservoir_range:
+            for demand in demand_range:
+                df = self.run() #TODO: how to insert demand here?
+                
+                
+                
+                # creating dataframe with events
+                events = output_df["max_num_dry"].sort_values(ascending = False).to_frame()
+                events = events.rename(columns = {"max_num_dry": yearly_demand})
+                events = events.reset_index(drop = True)
+                df = pd.concat([df, events], axis = 1)
         
         
 
