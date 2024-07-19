@@ -1,5 +1,4 @@
 
-
 class Reservoir():    
     def __init__(self, reservoir_volume: float, state: float = 0.0):
         self.reservoir_volume =  reservoir_volume

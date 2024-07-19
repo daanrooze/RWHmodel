@@ -86,19 +86,19 @@ class Demand(TimeSeries):
         root: str,
         timestep: int,
         unit: str = "mm",
-        area_chars: Optional[dict] = None,
+        area_chars: Optional[dict] = None
     ):
-        if type(demand_fn)==int:
-            pass
-        else:
-            super().__init__(fn=demand_fn, root=root)
-            self.data = self.read_timeseries(
-                file_type="csv",
-                required_headers=["datetime", "demand"],
-                numeric_cols=["demand"],
-                resample=True,
-                timestep=timestep,
-            )
+        #if type(demand_fn)==int:
+        #    pass
+        #else:
+        super().__init__(fn=demand_fn, root=root)
+        self.data = self.read_timeseries(
+            file_type="csv",
+            required_headers=["datetime", "demand"],
+            numeric_cols=["demand"],
+            resample=True,
+            timestep=timestep,
+        )
 
         if unit == "m3":  # Convert to mm
             if surface_area := area_chars.get("srf_area"):
@@ -109,12 +109,15 @@ class Demand(TimeSeries):
                 raise ValueError("Missing surface area for converting m3 per timestep to mm per timestep")
 
 
-
     def write(self, fn_out):
         self.write_timeseries(df=self.demand, subdir="demand", fn_out=fn_out)
 
 
-class ConstantDemand: #TODO: deprecated, moved to Demand class
-    def __init__(self, timeseries_df, constant: Union[int, float]) -> None:
+class ConstantDemand: # deprecate, move to Demand class?
+    def __init__(
+        self,
+        timeseries_df,
+        constant: Union[int, float]
+    ) -> None:
         timeseries_df["demand"] = constant
         self.data = timeseries_df[["demand"]]
