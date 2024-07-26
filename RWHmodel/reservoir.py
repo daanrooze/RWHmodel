@@ -9,7 +9,7 @@ class Reservoir():
         self.reservoir_stor = reservoir_stor
         self.runoff = 0
         self.deficit = 0
-        self.independent_demand
+        self.independent_demand = independent_demand
 
     def update_state(self, reservoir_stor, runoff, demand):
         if self.independent_demand == True: # In this case, demand will continue with its original size.

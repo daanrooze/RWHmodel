@@ -69,7 +69,7 @@ class Model(object):
         df = self.forcing.data
         # Adding desired demand to df
         df["demand"] = self.demand.data
-        # Adding empty arrays for to be calulcated factors:
+        # Adding empty columns for to be calulcated factors:
         df['int_stor'] = np.nan            # interception storage
         df['runoff'] = np.nan              # runoff
         df['reservoir_stor'] = np.nan      # storage in reservoir
@@ -78,29 +78,43 @@ class Model(object):
 
 
         # Other way, using numpy arrays
-        #old: flux = net_precip - self.demand.data 
-        ### initialize numpy arrays for deficit, runoff, and storage
-        # int_stor = np.zeros(self.forcing.data["net_precip"].shape[0])
-        # runoff = np.zeros(self.forcing.data["net_precip"].shape[0])
-        # reservoir_stor = np.zeros(self.forcing.data["net_precip"].shape[0])
-        # reservoir_overflow = np.zeros(self.forcing.data["net_precip"].shape[0])
-        # deficit = np.zeros(self.forcing.data["net_precip"].shape[0])
+        net_precip = np.array(self.forcing.data["precip"] - self.forcing.data["pet"])
+        #flux = net_precip - self.demand.data 
+        ### initialize numpy arrays
+        int_stor = np.zeros(self.forcing.data["net_precip"].shape[0])
+        runoff = np.zeros(self.forcing.data["net_precip"].shape[0])
+        reservoir_stor = np.zeros(self.forcing.data["net_precip"].shape[0])
+        reservoir_overflow = np.zeros(self.forcing.data["net_precip"].shape[0])
+        deficit = np.zeros(self.forcing.data["net_precip"].shape[0])
+
         
+        lst = [
+            {
+                "int_stor": 0,
+                "runoff": np.nan,
+                "reservoir_stor": 0,
+                "reservoir_overflow": np.nan,
+                "deficit": np.nan
+                }
+            ]
+        
+
         # TODO: implement iteration over fluxes and update reservoir
         # iterate over timesteps using hydro_model
+        iters = np.shape(net_precip)[0]
+        for t in iters:
         
+            
         #test_df = HydroModel()
         
         # Using apply function:
         # Using apply to calculate sum, product, and difference and update the DataFrame
-        df['int_cap'] = 2 # create column with interception capacity for apply() function
-        df[['int_stor', 'runoff']] = df.apply(HydroModel.update_state, axis=1)
-        #df = df.apply(HydroModel.update_state(self), axis=1, raw=False, engine="python")
-        #df = df.apply(Reservoir, axis=1, raw=False, engine="python")
+        #df['int_cap'] = 2 # create column with interception capacity for apply() function
+        #df[['int_stor', 'runoff']] = df.apply(HydroModel.update_state, axis=1)
         
         #TODO: probably quicker to calculate in np.array, and after calculations transform to df and insert datetime again.
 
-
+ 
 
 
     def batch_run(self, method, reservoir_range, demand_range, T_range=[1,2,5,10,20,50,100]):
