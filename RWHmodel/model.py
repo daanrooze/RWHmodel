@@ -7,7 +7,7 @@ from RWHmodel.timeseries import ConstantDemand, Demand, Forcing
 from RWHmodel.hydro_model import HydroModel
 
 
-class Model(object):
+class Model():
     #def __init__(self):
     #    pass
         

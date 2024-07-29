@@ -5,6 +5,7 @@ from typing import Optional, List, Union
 
 from RWHmodel.utils import convert_m3_to_mm
 
+#TODO: implement option to clip dataframe based on time interval (t_start, t_end)
 
 class TimeSeries:
     file_formats = ["csv"]
