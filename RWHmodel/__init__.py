@@ -17,3 +17,4 @@ from RWHmodel.hydro_model import *
 from RWHmodel.timeseries import *
 from RWHmodel.utils import *
 from RWHmodel.analysis import *
+from RWHmodel.plot import *
