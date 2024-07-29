@@ -7,9 +7,11 @@ from RWHmodel.timeseries import ConstantDemand, Demand, Forcing
 from RWHmodel.hydro_model import HydroModel
 
 
-class Model():
-    #def __init__(self):
-    #    pass
+
+class Model(object):
+    # def __init__(self):
+    #     pass
+
         
     
     def __init__( # was first called "setup"
@@ -65,60 +67,45 @@ class Model():
 
 
     def run(self):
-        # calc net precipitation flux
-        self.forcing.data["net_precip"] = self.forcing.data["precip"] - self.forcing.data["pet"]
-        # Initializing dataframe for calculations
-        df = self.forcing.data
-        # Adding desired demand to df
-        df["demand"] = self.demand.data
-        # Adding empty columns for to be calulcated factors:
-        df['int_stor'] = np.nan            # interception storage
-        df['runoff'] = np.nan              # runoff
-        df['reservoir_stor'] = np.nan      # storage in reservoir
-        df['reservoir_overflow'] = np.nan  # reservoir overflow
-        df['deficit'] = np.nan             # deficit: original demand that cannot be met
 
-
-        # Other way, using numpy arrays
+        ## Initialize numpy arrays
         net_precip = np.array(self.forcing.data["precip"] - self.forcing.data["pet"])
-        #flux = net_precip - self.demand.data 
-        ### initialize numpy arrays
-        int_stor = np.zeros(self.forcing.data["net_precip"].shape[0])
-        runoff = np.zeros(self.forcing.data["net_precip"].shape[0])
-        reservoir_stor = np.zeros(self.forcing.data["net_precip"].shape[0])
-        reservoir_overflow = np.zeros(self.forcing.data["net_precip"].shape[0])
-        deficit = np.zeros(self.forcing.data["net_precip"].shape[0])
+        demand = np.array(self.demand.data["demand"])
+        
+        reservoir_stor = np.zeros(len(net_precip))
+        reservoir_overflow = np.zeros(len(net_precip))
+        deficit = np.zeros(len(net_precip))
+        dry_days = np.zeros(len(net_precip))
+        consec_dry_days = np.zeros(len(net_precip))
 
+        # Run hydro_model per timestep         
+        int_stor, runoff = HydroModel.update_state(self, net_precip=net_precip)   
         
-        lst = [
-            {
-                "int_stor": 0,
-                "runoff": np.nan,
-                "reservoir_stor": 0,
-                "reservoir_overflow": np.nan,
-                "deficit": np.nan
-                }
-            ]
+        # Fill tank arrays
+        for i in range(1, len(net_precip)):
+            # reservoir_stor[i] = min(max(0, reservoir_stor[i-1] + runoff[i] - demand[i]), self.reservoir_cap)
+            # reservoir_overflow[i] =  max(0, reservoir_stor[i-1] + runoff[i] - demand[i] - self.reservoir_cap)
+            # deficit[i] = max(0, demand[i] - reservoir_stor[i])
+            if reservoir_stor[i] >= demand[i]:
+                dry_days[i] = 0
+            elif reservoir_stor[i] < demand[i]:
+                dry_days[i] = dry_days[i-1] + 1
+            if dry_days[i-1] != 0 and dry_days[i] == 0:
+                consec_dry_days[i] = dry_days[i-1]
+            else:
+                consec_dry_days[i] = 0
         
 
-        # TODO: implement iteration over fluxes and update reservoir
-        # iterate over timesteps using hydro_model
-        iters = np.shape(net_precip)[0]
-        for t in iters:
-            pass
-            
-        #test_df = HydroModel()
-        
-        # Using apply function:
-        # Using apply to calculate sum, product, and difference and update the DataFrame
-        #df['int_cap'] = 2 # create column with interception capacity for apply() function
-        #df[['int_stor', 'runoff']] = df.apply(HydroModel.update_state, axis=1)
-        
         #TODO: probably quicker to calculate in np.array, and after calculations transform to df and insert datetime again.
-
+        df = pd.DataFrame("reservoir_stor" : reservoir_stor,
+                          "reservoir_overflow" : reservoir_overflow,
+                          "deficit" : deficit,
+                          "consec_dry_days" : consec_dry_days)
+        
+        index==self.forcing.data.index
+        
+        # TODO: add to plot script: Reservoir storage, overflow and deficit against volume (mm/day)
  
-
-
     def batch_run(self, method, reservoir_range, demand_range, T_range=[1,2,5,10,20,50,100]):
         # Batch run function to obtain solution space and statistics on output.
         methods = ["total_days", "consecutive_days"]
