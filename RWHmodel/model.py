@@ -62,6 +62,8 @@ class Model(object):
         # TODO: import area characteristics here.
         pass
 
+
+
     def run(self):
         # calc net precipitation flux
         self.forcing.data["net_precip"] = self.forcing.data["precip"] - self.forcing.data["pet"]
@@ -103,7 +105,7 @@ class Model(object):
         # iterate over timesteps using hydro_model
         iters = np.shape(net_precip)[0]
         for t in iters:
-        
+            pass
             
         #test_df = HydroModel()
         
@@ -119,7 +121,7 @@ class Model(object):
 
     def batch_run(self, method, reservoir_range, demand_range, T_range=[1,2,5,10,20,50,100]):
         # Batch run function to obtain solution space and statistics on output.
-        methods = ["average_days", "consecutive_days"]
+        methods = ["total_days", "consecutive_days"]
         if method not in methods:
             raise ValueError(
                 f"Provide valid method from {methods}."
