@@ -16,7 +16,7 @@ class HydroModel:
 
         ### fill numpy arrays
         for i in range(1, len(net_precip)):
-            int_stor[i] = max(min(int_stor[i - 1] + net_precip[i], self.int_cap), 0)
+            int_stor[i] = max(min(int_stor[i - 1] + net_precip[i], self.config['int_cap']), 0) #TODO: should be self.int_cap
             runoff[i] = max(0, net_precip[i] - int_stor[i])
 
         return int_stor, runoff
