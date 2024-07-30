@@ -47,7 +47,7 @@ def plot_meteo(
     ax2 = ax1.twinx()
     
     # Drawing lines and filled area
-    ax2.bar(df.index, df['precip'], linewidth=2, linestyle='-',
+    ax2.plot(df.index, df['precip'], linewidth=2, linestyle='-',
              label = 'Precipitation', color='#080c80') 
     ax1.fill_between(df.index, y1=df['pet'], y2=0, label = 'Potential Evapotranspiration' , color='#c6c6c6')
     
@@ -83,10 +83,45 @@ def plot_meteo(
 def plot_run(
         root,
         name,
-        run_fn # Path to run output file
+        run_fn, # Path to run output file
+        t_start,
+        t_end,
+        reservoir_cap,
+        yearly_demand
     ):
+    df = run_fn
+    # Create plot
+    fig, ax1 = plt.subplots(1, figsize=(14,6))
     
-    pass
+    # Drawing lines and filled area
+    ax1.plot(df.index, df['reservoir_stor'], linewidth=2, linestyle='-',
+             label = 'Reservoir storage', color='#080c80') 
+    ax1.plot(df.index, df['reservoir_overflow'], linewidth=2, linestyle='-',
+             label = 'Reservoir overflow', color='#00b389')
+    ax1.plot(df.index, df['deficit'], linewidth=2, linestyle='-',
+             label = 'Deficit', color='#ff960d')
+    
+    # Axes labels
+    ax1.set_ylabel('Storage/overflow/deficit [mm]')
+    ax1.set_xlabel('Date')
+    
+    # Axes limits
+    y_max = np.round(df['reservoir_stor'].max(), -1) + 10
+    ax1.set_ylim([0, y_max])
+    ax1.set_xlim([t_start, t_end])
+    
+    # Layout and grid
+    ax1.spines.top.set_visible(False)
+    plt.grid(visible=True, which="major", color="black", linestyle="-", alpha=0.2)
+    plt.grid(visible=True, which="minor", color="black", linestyle="-", alpha=0.1)
+    
+    # Legend
+    legend = fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05)) #TODO: maybe different layout for legend?
+    
+    # Export
+    fig.savefig(f"{root}/output/figures/{name}_run_reservoir{reservoir_cap}_demand{yearly_demand}.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_run_reservoir{reservoir_cap}_demand{yearly_demand}.svg", dpi=300, bbox_inches='tight')
+    
 
 def plot_system_curve(
         root,

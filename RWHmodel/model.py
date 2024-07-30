@@ -23,48 +23,62 @@ class Model(object):
         reservoir_cap: float,
         reservoir_initial_state: float = 0,
         timestep: int = 86400,
+        t_start: Optional[str] = None,
+        t_end: Optional[str] = None,
         demand_fn: Optional[str] = None,
-        independent_demand: bool = True, # toggle demand independent of available water in reservoir
         unit: str = "mm",
     ):
         # Setup folder structure
         if len(root)>0:
             self.root = root
         else:
-            raise ValueError(f"Provide root of model folder")
-        makedir("root/input")
-        makedir("root/output")
-        makedir("root/output/figures")
-        makedir("root/output/runs")
-        makedir("root/output/statistics")
+            raise ValueError("Provide root of model folder")
+        makedir(f"{self.root}/input")
+        makedir(f"{self.root}/output")
+        makedir(f"{self.root}/output/figures")
+        makedir(f"{self.root}/output/runs")
+        makedir(f"{self.root}/output/statistics")
         
         # Setup model run name
         if len(name)>0:
             self.name = name
         else:
-            raise ValueError(f"Provide model run name")
+            raise ValueError("Provide model run name")
         self.timestep = timestep
         
         # Setup of area characteristics
-        self.int_cap = 2 #mm - placeholder interception storage capacity (later change to setup from config)
         self.setup_from_toml(setup_fn=setup_fn)
         
         # Setup forcing
-        self.forcing = Forcing(forcing_fn, timestep, root)
-        self.t_start = self.forcing.data.index.min() #TODO: add manual override of self.t_start when setting up (if interval needs to be excluded)
-        self.t_end = self.forcing.data.index.max()
+        self.forcing = Forcing(
+            forcing_fn = forcing_fn,
+            root = root,
+            timestep = timestep,
+            t_start = t_start,
+            t_end = t_end
+        )
+        #self.t_start = self.forcing.data.index.min() #TODO: add manual override of self.t_start when setting up (if interval needs to be excluded)
+        #self.t_end = self.forcing.data.index.max()
         
         # Setup demand
         if type(demand_fn) in [float, int]:
-            self.demand = ConstantDemand(self.forcing, demand_fn)
+            self.demand = ConstantDemand(
+                forcing_fn = self.forcing.data,
+                constant = demand_fn
+            )
         else:
             self.demand = Demand(
-                demand_fn, root, timestep, unit=unit, setup_fn=setup_fn
+                demand_fn = demand_fn,
+                root = root,
+                timestep = timestep,
+                t_start = t_start,
+                t_end = t_end,
+                unit = unit,
+                setup_fn = setup_fn
             )
-        self.demand.independent_demand = independent_demand
         
         # Initiate hydro_model
-        self.hydro_model = HydroModel(self.int_cap) #TODO: later change to fetch from area_chars
+        self.hydro_model = HydroModel(self.config['int_cap'])
         
         # Initiate reservoir
         self.reservoir = Reservoir(reservoir_cap, reservoir_initial_state)
@@ -121,7 +135,7 @@ class Model(object):
         df = pd.DataFrame(df_data, index = self.forcing.data['precip'].index)
         if save==True:
             self.results = df
-            df.to_csv(f"root/output/runs/single_run_{reservoir_cap}.csv")
+            df.to_csv(f"{self.root}/output/runs/single_run_{reservoir_cap}.csv")
         return df
 
         # TODO: add to plot script: Reservoir storage, overflow and deficit against volume (mm/day)
@@ -180,6 +194,7 @@ class Model(object):
         plot_type=None,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
+        run_fn: Optional[str] = None
     ):
         plot_types = ["meteo", "run", "system_curve", "saving_curve"]
         if plot_type not in plot_types:
@@ -205,7 +220,27 @@ class Model(object):
                 aggregate = False
             )
         
-        #plot_run()
+        if plot_type == "run":            
+            if run_fn:
+                run_fn = pd.read_csv(run_fn, sep=',')
+            else:
+                run_fn = self.results
+            plot_run(
+                self.root,
+                self.name,
+                self.results,
+                t_start,
+                t_end,
+                self.reservoir.reservoir_cap,
+                self.demand.yearly_demand
+            )
+        
+        if plot_type == "plot_system_curve":
+            pass
+        
+        if plot_type == "plot_saving_curve":
+            pass
+
         
         
 

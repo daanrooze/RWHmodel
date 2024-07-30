@@ -10,9 +10,17 @@ from RWHmodel.utils import convert_m3_to_mm
 class TimeSeries:
     file_formats = ["csv"]
 
-    def __init__(self, fn: str, root: str) -> None:
+    def __init__(
+            self,
+            fn: str,
+            root: str,
+            t_start: Optional[str] = None,
+            t_end: Optional[str] = None,
+        ) -> None:
         self.root = root
         self.fn = fn
+        self.t_start = t_start
+        self.t_end = t_end
 
     def read_timeseries(
         self,
@@ -21,6 +29,8 @@ class TimeSeries:
         numeric_cols: List[str],
         resample: bool = True,
         timestep: Optional[int] = None,
+        #t_start: Optional[str] = None,
+        #t_end: Optional[str] = None
     ) -> pd.DataFrame:
         df = pd.read_csv(self.fn, sep=",")
 
@@ -34,7 +44,20 @@ class TimeSeries:
 
         df["datetime"] = pd.to_datetime(df["datetime"], format="%d-%m-%Y %H:%M")
         df = df.set_index("datetime")
-
+        
+        if self.t_start:
+            self.t_start = pd.to_datetime(self.t_start)
+        else:
+            self.t_start = df.index.min()
+        if self.t_end:
+            self.t_end = pd.to_datetime(self.t_end)
+        else:
+            self.t_end = df.index.max()
+        self.num_years = (self.t_end - self.t_start)/(np.timedelta64(1, 'W')*52)
+        mask = (df.index > self.t_start) & (df.index <= self.t_end)
+        df = df.loc[mask]
+        
+        
         if resample:
             if not timestep:
                 raise ValueError("timestep is needed for timeseries resample.")
@@ -59,12 +82,14 @@ class Forcing(TimeSeries):
     def __init__(
         self,
         forcing_fn: str,
+        root: str,
         timestep: Optional[int] = None,
-        root: str = "./",
+        t_start: Optional[str] = None,
+        t_end: Optional[str] = None,
         resample: bool = False,
     ) -> None:
         # Call TimeSeries __init__ with super
-        super().__init__(fn=forcing_fn, root=root)
+        super().__init__(fn=forcing_fn, root=root, t_start=t_start, t_end=t_end)
         self.data = self.read_timeseries(
             file_type="csv",
             required_headers=["datetime", "precip", "pet"],
@@ -86,18 +111,21 @@ class Demand(TimeSeries):
         demand_fn: str,
         root: str,
         timestep: int,
+        t_start: Optional[str] = None,
+        t_end: Optional[str] = None,
+        resample: bool = False,
         unit: str = "mm",
         setup_fn: Optional[dict] = None
     ):
+        super().__init__(fn=demand_fn, root=root, t_start=t_start, t_end=t_end)
         #if type(demand_fn)==int:
         #    pass
         #else:
-        super().__init__(fn=demand_fn, root=root)
         self.data = self.read_timeseries(
             file_type="csv",
             required_headers=["datetime", "demand"],
             numeric_cols=["demand"],
-            resample=True,
+            resample=resample,
             timestep=timestep,
         )
 
@@ -114,11 +142,11 @@ class Demand(TimeSeries):
         self.write_timeseries(df=self.demand, subdir="demand", fn_out=fn_out)
 
 
-class ConstantDemand: # deprecate, move to Demand class?
+class ConstantDemand:
     def __init__(
         self,
-        timeseries_df,
+        forcing_fn, # take forcing_fn as template
         constant: Union[int, float]
     ) -> None:
-        timeseries_df["demand"] = constant
-        self.data = timeseries_df[["demand"]]
+        forcing_fn["demand"] = constant
+        self.data = forcing_fn[["demand"]]
