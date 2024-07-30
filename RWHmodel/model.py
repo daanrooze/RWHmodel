@@ -1,11 +1,14 @@
+import os
 from typing import Optional
 import numpy as np
 import pandas as pd
+import codecs
+import toml
 
 from RWHmodel.reservoir import Reservoir
 from RWHmodel.timeseries import ConstantDemand, Demand, Forcing
 from RWHmodel.hydro_model import HydroModel
-
+from RWHmodel.utils import makedir
 
 
 class Model(object):
@@ -27,10 +30,18 @@ class Model(object):
         unit: str = "mm",
         area_chars: Optional[dict] = None,
     ):
+        # Setup folder structure
         if len(root)>0:
             self.root = root
         else:
             raise ValueError(f"Provide root of model folder")
+        makedir("root/input")
+        makedir("root/output")
+        makedir("root/output/figures")
+        makedir("root/output/run")
+        makedir("root/output/statistics")
+        
+        # Setup model run name
         if len(name)>0:
             self.name = name
         else:
@@ -51,6 +62,7 @@ class Model(object):
         
         # Setup of area characteristics
         self.int_cap = 2 #mm - placeholder interception storage capacity (later change to setup from config)
+        #TODO: setup_from_toml()
         
         # Initiate hydro_model
         self.hydro_model = HydroModel(self.int_cap) #TODO: later change to fetch from area_chars
@@ -59,10 +71,13 @@ class Model(object):
         self.reservoir = Reservoir(reservoir_cap, reservoir_initial_state)
         
 
-    def setup_from_config(self, config_fn):
+    def setup_from_toml(self, setup_fn):
         # TODO: parse config with code from config.py and call self.setup with arguments from config
         # TODO: import area characteristics here.
-        pass
+        folder = f"{self.root}/input"
+        with codecs.open(os.path.join(folder, setup_fn), "r", encoding="utf-8") as f:
+            area_chars = toml.load(f)
+        return area_chars
 
 
 
@@ -95,7 +110,7 @@ class Model(object):
             else:
                 consec_dry_days[i] = 0
         
-
+"""
         #TODO: probably quicker to calculate in np.array, and after calculations transform to df and insert datetime again.
         df = pd.DataFrame("reservoir_stor" : reservoir_stor,
                           "reservoir_overflow" : reservoir_overflow,
@@ -136,4 +151,4 @@ class Model(object):
                 df = pd.concat([df, events], axis = 1)
         
         
-
+"""
