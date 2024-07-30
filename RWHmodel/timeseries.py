@@ -87,7 +87,7 @@ class Demand(TimeSeries):
         root: str,
         timestep: int,
         unit: str = "mm",
-        area_chars: Optional[dict] = None
+        setup_fn: Optional[dict] = None
     ):
         #if type(demand_fn)==int:
         #    pass
@@ -102,7 +102,7 @@ class Demand(TimeSeries):
         )
 
         if unit == "m3":  # Convert to mm
-            if surface_area := area_chars.get("srf_area"):
+            if surface_area := setup_fn.get("srf_area"):
                 self.demand = convert_m3_to_mm(
                     df=self.demand, col="demand", surface_area=surface_area
                 )
