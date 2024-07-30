@@ -10,7 +10,14 @@ from scipy.optimize import curve_fit
 from RWHmodel.model import Model
 
 
-
+### COLOR MAPS
+# Default color map
+cmap = ['#080c80', '#0ebbf0', '#00b389', '#ff960d']
+# Gradient color maps
+cmap_g1 = ['#080c80', '#5f6199', '#9395b9', '#c9cadc']
+cmap_g2 = ['#00b389', '#5bc1a4', '#90d1c0', '#c6e7de']
+cmap_g3 = ['#ff960d', '#f8b05b', '#fbcb8f', '#fde4c6']
+cmap_g4 = ['#0ebbf0', '#62ccf1', '#96d9f2', '#c9ebf7']
 
 
 class Plot(Model):
@@ -19,14 +26,7 @@ class Plot(Model):
     ):
         super().__init__()
     
-    ### COLOR MAPS
-    # Default color map
-    cmap = ['#080c80', '#0ebbf0', '#00b389', '#ff960d']
-    # Gradient color maps
-    cmap_g1 = ['#080c80', '#5f6199', '#9395b9', '#c9cadc']
-    cmap_g2 = ['#00b389', '#5bc1a4', '#90d1c0', '#c6e7de']
-    cmap_g3 = ['#ff960d', '#f8b05b', '#fbcb8f', '#fde4c6']
-    cmap_g4 = ['#0ebbf0', '#62ccf1', '#96d9f2', '#c9ebf7']
+    
 
     def plot_meteo(
             root,
