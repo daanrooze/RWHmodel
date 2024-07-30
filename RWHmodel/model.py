@@ -22,7 +22,7 @@ class Model(object):
         forcing_fn: str,
         reservoir_cap: float,
         reservoir_initial_state: float = 0,
-        timestep: int = 86400,
+        timestep: Optional[int] = None,#86400,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
         demand_fn: Optional[str] = None,
@@ -44,7 +44,6 @@ class Model(object):
             self.name = name
         else:
             raise ValueError("Provide model run name")
-        self.timestep = timestep
         
         # Setup of area characteristics
         self.setup_from_toml(setup_fn=setup_fn)
@@ -57,8 +56,6 @@ class Model(object):
             t_start = t_start,
             t_end = t_end
         )
-        #self.t_start = self.forcing.data.index.min() #TODO: add manual override of self.t_start when setting up (if interval needs to be excluded)
-        #self.t_end = self.forcing.data.index.max()
         
         # Setup demand
         if type(demand_fn) in [float, int]:
@@ -73,9 +70,14 @@ class Model(object):
                 timestep = timestep,
                 t_start = t_start,
                 t_end = t_end,
-                unit = unit,
+                unit = unit, #TODO: test unit conversion
                 setup_fn = setup_fn
             )
+        if self.forcing.timestep != self.demand.timestep:
+            raise ValueError("Forcing and demand timeseries have different timesteps. Change input files or resample by specifying timestep.")
+        if len(self.forcing.data) != len(self.demand.data):
+            raise ValueError(f"Forcing and demand timeseries have different starting and/or end dates. Forcing timeseries runs from {self.forcing.t_start} to {self.forcing.t_end}, while demand timeseries runs from {self.demand.t_start} to {self.demand.t_end}. Change input files or clip timeseries by specifying interval.")
+        #TODO: add method to automatically clip forcing and demand timeseries to smalles interval?
         
         # Initiate hydro_model
         self.hydro_model = HydroModel(self.config['int_cap'])

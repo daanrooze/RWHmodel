@@ -14,6 +14,7 @@ class TimeSeries:
             self,
             fn: str,
             root: str,
+            timestep: Optional[int] = None,
             t_start: Optional[str] = None,
             t_end: Optional[str] = None,
         ) -> None:
@@ -21,6 +22,7 @@ class TimeSeries:
         self.fn = fn
         self.t_start = t_start
         self.t_end = t_end
+        self.timestep = timestep
 
     def read_timeseries(
         self,
@@ -29,8 +31,6 @@ class TimeSeries:
         numeric_cols: List[str],
         resample: bool = True,
         timestep: Optional[int] = None,
-        #t_start: Optional[str] = None,
-        #t_end: Optional[str] = None
     ) -> pd.DataFrame:
         df = pd.read_csv(self.fn, sep=",")
 
@@ -54,15 +54,18 @@ class TimeSeries:
         else:
             self.t_end = df.index.max()
         self.num_years = (self.t_end - self.t_start)/(np.timedelta64(1, 'W')*52)
+        
+        # Resample if timestep is not same as df_datetime (already to self). If not given, set self.timestep based on provided forcing input
+        if timestep != int((df.index[1] - df.index[0]).total_seconds()):
+            df = df.resample(f"{timestep}s", label="right").sum()
+        else:
+            self.timestep =  int((df.index[1] - df.index[0]).total_seconds())
+        
         mask = (df.index > self.t_start) & (df.index <= self.t_end)
         df = df.loc[mask]
-        
-        
-        if resample:
-            if not timestep:
-                raise ValueError("timestep is needed for timeseries resample.")
-            df.resample(f"{timestep}s", label="right").sum()
         return df
+        
+        
 
     def write_timeseries(
         self, df: pd.DataFrame, subdir: str, fn_out: str, file_format: str = "csv"
@@ -86,15 +89,15 @@ class Forcing(TimeSeries):
         timestep: Optional[int] = None,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
-        resample: bool = False,
+        #resample: bool = False,
     ) -> None:
         # Call TimeSeries __init__ with super
-        super().__init__(fn=forcing_fn, root=root, t_start=t_start, t_end=t_end)
+        super().__init__(fn=forcing_fn, root=root, timestep=timestep, t_start=t_start, t_end=t_end)
         self.data = self.read_timeseries(
             file_type="csv",
             required_headers=["datetime", "precip", "pet"],
             numeric_cols=["precip", "pet"],
-            resample=resample,
+            #resample=resample,
             timestep=timestep,
         )
 
@@ -110,14 +113,14 @@ class Demand(TimeSeries):
         self,
         demand_fn: str,
         root: str,
-        timestep: int,
+        timestep: Optional[int] = None,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
-        resample: bool = False,
+        #resample: bool = False,
         unit: str = "mm",
         setup_fn: Optional[dict] = None
     ):
-        super().__init__(fn=demand_fn, root=root, t_start=t_start, t_end=t_end)
+        super().__init__(fn=demand_fn, root=root, timestep=timestep, t_start=t_start, t_end=t_end)
         #if type(demand_fn)==int:
         #    pass
         #else:
@@ -125,7 +128,7 @@ class Demand(TimeSeries):
             file_type="csv",
             required_headers=["datetime", "demand"],
             numeric_cols=["demand"],
-            resample=resample,
+            #resample=resample,
             timestep=timestep,
         )
 
