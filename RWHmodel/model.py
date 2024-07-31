@@ -21,11 +21,11 @@ class Model(object):
         name: str,
         setup_fn: str,
         forcing_fn: str,
+        demand_fn: str,
         reservoir_initial_state: float = 0,
         timestep: Optional[int] = None,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
-        demand_fn: Optional[str] = None,
         unit: str = "mm",
     ):
         # Setup folder structure
@@ -278,10 +278,8 @@ class Model(object):
                 self.root,
                 self.name,
                 system_fn,
-                t_start,
-                t_end,
-                self.reservoir.reservoir_cap,
-                self.demand.yearly_demand
+                self.config['max_num_days'],
+                validation = False
             )
         
         if plot_type == "plot_saving_curve":

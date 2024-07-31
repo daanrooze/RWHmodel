@@ -11,14 +11,18 @@ class Reservoir():
  
     def update_state(self, runoff, demand):
         reservoir_stor = self.reservoir_stor + runoff - demand
-        #reservoir_overflow = self.reservoir_overflow
         if reservoir_stor > self.reservoir_cap:
             self.reservoir_overflow = reservoir_stor - self.reservoir_cap
             reservoir_stor = self.reservoir_cap
+        elif reservoir_stor > demand:
+            self.deficit = 0.0
+            self.reservoir_overflow = 0
         elif reservoir_stor > 0 and reservoir_stor <= demand:
             self.deficit = demand - reservoir_stor
+            self.reservoir_overflow = 0
         elif reservoir_stor <= 0:
             self.deficit = 4
             reservoir_stor = 0.0
+            self.reservoir_overflow = 0
         self.reservoir_stor = reservoir_stor
         
