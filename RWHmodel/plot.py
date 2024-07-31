@@ -128,19 +128,22 @@ def plot_system_curve(
         name,
         system_fn,
         max_num_days, # The maximum number of total OR consecutive days
-        demand_range,
-        T_return_list = [1,2,5,10,20,50,100],
+        max_demand,
+        T_return_list = [1,2,5,10],
         validation = False
     ):    
+    if len(T_return_list) > 4:
+        raise ValueError("Provide maximum of 4 return period for plotting")
+    
     if validation:
         plot_name = "validation_"
     else:
-        plot_name = None
+        plot_name = ""
 
     df_vars = func_fitting(system_fn, T_return_list)
     
     # Define maximum specific water demand (x-axis bounds)
-    x_max = max(demand_range)
+    x_max = max_demand  #max(demand_range)
     x_range = np.arange(0.01,x_max,1).astype('float64')
     
     # Create plot
@@ -167,8 +170,8 @@ def plot_system_curve(
     legend = fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
     
     # Export
-    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{max_num_days}dd.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{max_num_days}dd.svg", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{max_num_days}numdays.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{max_num_days}numdays.svg", dpi=300, bbox_inches='tight')
 
     
 
@@ -177,10 +180,11 @@ def plot_saving_curve(
         name,
         system_fn, # Path to saved system file
         max_num_days, # The maximum number of total OR consecutive days
+        typologies_name,
         typologies_demand, # List of typologies and yearly demand, from setup_batch.toml file.
         typologies_area, # List of typologies and surface area, from setup_batch.toml file.
+        T_return_list = [1,2,5,10],
         ambitions = None, # List of desired reduction lines (in %)
-        T_return_list = [1,2,5,10,20,50,100]
     ):
     if ambitions and type(ambitions)!=list:
         raise ValueError("Provide ambitions as list of percentages")
@@ -190,22 +194,24 @@ def plot_saving_curve(
     cmap_list = [cmap_g1, cmap_g2, cmap_g3, cmap_g4]
     
     fig, ax = plt.subplots(1, figsize=(8,6))
-    plt.axis([0, 100, 0, 20]) #setting axis boundaries (xmin, xmax, ymin, ymax)
+    plt.axis([0, 100, 0, 20]) #setting axis boundaries (xmin, xmax, ymin, ymax) #TODO: make variable of axis boundaries?
     
-    typologies = list(typologies_demand)
+    #typologies = list(typologies_demand)
+    
     # Create plot
-    for i, typology in enumerate(typologies):
+    for i, typology in enumerate(typologies_name):
         cmap_i = cmap_list[i]
-        df_graph = pd.DataFrame(columns = system_fn.columns[1:])
+        columns = system_fn.columns[1:]
+        df_graph = pd.DataFrame(columns = columns)
         df_graph['proc'] = np.arange(0,1.001,0.001)
-        df_graph['demand'] = df_graph['proc'] * typologies_demand[typology]
+        df_graph['demand'] = df_graph['proc'] * typologies_demand[i]
         
         # Filling df_graph with values for tank size i.r.t. yearly demands. Calculating back to m3 using surface area.
-        for i, col in enumerate(T_return_list):
+        for i, col in enumerate(columns):
             df_graph[str(col)] = (func_system_curve_inv(df_graph["demand"],
-                                                                  df_vars["a"][col],
-                                                                  df_vars["b"][col],
-                                                                  df_vars["n"][col]) / 1000) * typologies_area[typology]
+                                                                  df_vars["a"][int(col)],
+                                                                  df_vars["b"][int(col)],
+                                                                  df_vars["n"][int(col)]) / 1000) * typologies_area[i]
            
         # Plotting curves
         for i, col in enumerate(T_return_list):
@@ -231,5 +237,5 @@ def plot_saving_curve(
     legend = fig.legend(loc='right')
     
     # Export
-    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{max_num_days}dd.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{max_num_days}dd.svg", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{max_num_days}numdays.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{max_num_days}numdays.svg", dpi=300, bbox_inches='tight')
