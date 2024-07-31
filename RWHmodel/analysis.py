@@ -48,9 +48,10 @@ def func_fitting(
         # Determine initial conditions
         # Check https://stackoverflow.com/questions/45554107/asymptotic-regression-in-python for assumptions
         a0 = system_fn[str(col)].max()
-        b0 = float(system_fn.iloc[(system_fn[str(col)]-(a0 / 2)).abs().argsort()[:1]].tank_size)
+        b0 = system_fn.iloc[(system_fn[str(col)]-(a0 / 2)).abs().argsort()[:1]].tank_size
         n0 = 1.
-        p0 = [a0, b0, n0]
+        p0 = [a0, float(b0.iloc[0]), n0]
+        #p0 = [float(a0), float(b0), float(n0)]
         
         # Curve fit using Scipy
         popt, pcov = curve_fit(func_system_curve, system_fn['tank_size'], system_fn[str(col)], p0=p0)

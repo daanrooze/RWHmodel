@@ -119,8 +119,8 @@ def plot_run(
     legend = fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05)) #TODO: maybe different layout for legend?
     
     # Export
-    fig.savefig(f"{root}/output/figures/{name}_run_reservoir{reservoir_cap}_demand{yearly_demand}.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_run_reservoir{reservoir_cap}_demand{yearly_demand}.svg", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr_demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr_demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
     
 
 def plot_system_curve(

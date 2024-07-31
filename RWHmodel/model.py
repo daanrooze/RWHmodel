@@ -71,7 +71,7 @@ class Model(object):
                 t_start = t_start,
                 t_end = t_end,
                 unit = unit, #TODO: test unit conversion
-                setup_fn = setup_fn
+                setup_fn = self.config
             )
         if self.forcing.timestep != self.demand.timestep:
             raise ValueError("Forcing and demand timeseries have different timesteps. Change input files or resample by specifying timestep.")
@@ -222,7 +222,8 @@ class Model(object):
         plot_type=None,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
-        run_fn: Optional[str] = None
+        fn: Optional[str] = None,
+        **kwargs
     ):
         plot_types = ["meteo", "run", "system_curve", "saving_curve"]
         if plot_type not in plot_types:
@@ -241,6 +242,8 @@ class Model(object):
         #else:
         #    t_end = self.t_end
         
+        
+        
         if plot_type == "meteo":
             plot_meteo(
                 self.root,
@@ -251,9 +254,9 @@ class Model(object):
                 aggregate = False
             )
         
-        if plot_type == "run":            
-            if run_fn:
-                run_fn = pd.read_csv(run_fn, sep=',')
+        if plot_type == "run":
+            if fn:
+                run_fn = pd.read_csv(fn, sep=',')
             else:
                 run_fn = self.results
             plot_run(
@@ -263,11 +266,23 @@ class Model(object):
                 t_start,
                 t_end,
                 self.reservoir.reservoir_cap,
-                str((self.demand.data.sum())/self.demand.num_years)
+                self.demand.yearly_demand
             )
         
         if plot_type == "plot_system_curve":
-            pass
+            if fn:
+                system_fn = pd.read_csv(fn, sep=',')
+            else:
+                system_fn = self.results
+            plot_system_curve(
+                self.root,
+                self.name,
+                system_fn,
+                t_start,
+                t_end,
+                self.reservoir.reservoir_cap,
+                self.demand.yearly_demand
+            )
         
         if plot_type == "plot_saving_curve":
             pass
