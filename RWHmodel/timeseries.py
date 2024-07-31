@@ -1,22 +1,25 @@
-import pandas as pd
-import numpy as np
+import os
 from os.path import join
-from typing import Optional, List, Union
+from typing import List, Optional, Union
+
+import numpy as np
+import pandas as pd
 
 from RWHmodel.utils import convert_m3_to_mm
 
-#TODO: implement option to clip dataframe based on time interval (t_start, t_end)
+# TODO: implement option to clip dataframe based on time interval (t_start, t_end)
+
 
 class TimeSeries:
     file_formats = ["csv"]
 
     def __init__(
-            self,
-            fn: str,
-            root: str,
-            t_start: Optional[str] = None,
-            t_end: Optional[str] = None,
-        ) -> None:
+        self,
+        fn: str,
+        root: str,
+        t_start: Optional[str] = None,
+        t_end: Optional[str] = None,
+    ) -> None:
         self.root = root
         self.fn = fn
         self.t_start = t_start
@@ -29,8 +32,8 @@ class TimeSeries:
         numeric_cols: List[str],
         resample: bool = True,
         timestep: Optional[int] = None,
-        #t_start: Optional[str] = None,
-        #t_end: Optional[str] = None
+        # t_start: Optional[str] = None,
+        # t_end: Optional[str] = None
     ) -> pd.DataFrame:
         df = pd.read_csv(self.fn, sep=",")
 
@@ -44,7 +47,7 @@ class TimeSeries:
 
         df["datetime"] = pd.to_datetime(df["datetime"], format="%d-%m-%Y %H:%M")
         df = df.set_index("datetime")
-        
+
         if self.t_start:
             self.t_start = pd.to_datetime(self.t_start)
         else:
@@ -53,11 +56,10 @@ class TimeSeries:
             self.t_end = pd.to_datetime(self.t_end)
         else:
             self.t_end = df.index.max()
-        self.num_years = (self.t_end - self.t_start)/(np.timedelta64(1, 'W')*52)
+        self.num_years = (self.t_end - self.t_start) / (np.timedelta64(1, "W") * 52)
         mask = (df.index > self.t_start) & (df.index <= self.t_end)
         df = df.loc[mask]
-        
-        
+
         if resample:
             if not timestep:
                 raise ValueError("timestep is needed for timeseries resample.")
@@ -66,16 +68,21 @@ class TimeSeries:
 
     def write_timeseries(
         self, df: pd.DataFrame, subdir: str, fn_out: str, file_format: str = "csv"
-    ):
+    ) -> str:
         if file_format not in self.file_formats:
             raise ValueError(
                 f"Provide supported file format from {', '.join(self.file_formats)}"
             )
 
-        out_path = join(self.root, "output", subdir, f"{fn_out}.{file_format}")
+        out_dir = join(self.root, "output", subdir)
+        os.makedirs(out_dir, exist_ok=True)
+        out_path = join(out_dir, f"{fn_out}.{file_format}")
 
         if file_format == "csv":
             df.to_csv(out_path, sep=",", date_format="%d-%m-%Y %H:%M")
+        else:
+            raise ValueError("Only allowed to write csv files")
+        return out_path
 
 
 class Forcing(TimeSeries):
@@ -102,7 +109,7 @@ class Forcing(TimeSeries):
         raise NotImplementedError
 
     def write(self, fn_out="forcing"):
-        self.write_timeseries(df=self.data, subdir="forcing", fn_out=fn_out)
+        return self.write_timeseries(df=self.data, subdir="forcing", fn_out=fn_out)
 
 
 class Demand(TimeSeries):
@@ -115,12 +122,12 @@ class Demand(TimeSeries):
         t_end: Optional[str] = None,
         resample: bool = False,
         unit: str = "mm",
-        setup_fn: Optional[dict] = None
+        setup_fn: Optional[dict] = None,
     ):
         super().__init__(fn=demand_fn, root=root, t_start=t_start, t_end=t_end)
-        #if type(demand_fn)==int:
+        # if type(demand_fn)==int:
         #    pass
-        #else:
+        # else:
         self.data = self.read_timeseries(
             file_type="csv",
             required_headers=["datetime", "demand"],
@@ -135,8 +142,9 @@ class Demand(TimeSeries):
                     df=self.demand, col="demand", surface_area=surface_area
                 )
             else:
-                raise ValueError("Missing surface area for converting m3 per timestep to mm per timestep")
-
+                raise ValueError(
+                    "Missing surface area for converting m3 per timestep to mm per timestep"
+                )
 
     def write(self, fn_out):
         self.write_timeseries(df=self.demand, subdir="demand", fn_out=fn_out)
@@ -145,8 +153,8 @@ class Demand(TimeSeries):
 class ConstantDemand:
     def __init__(
         self,
-        forcing_fn, # take forcing_fn as template
-        constant: Union[int, float]
+        forcing_fn,  # take forcing_fn as template
+        constant: Union[int, float],
     ) -> None:
         forcing_fn["demand"] = constant
         self.data = forcing_fn[["demand"]]
