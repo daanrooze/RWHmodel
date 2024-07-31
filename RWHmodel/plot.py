@@ -201,21 +201,23 @@ def plot_saving_curve(
     # Create plot
     for i, typology in enumerate(typologies_name):
         cmap_i = cmap_list[i]
-        columns = system_fn.columns[1:]
-        df_graph = pd.DataFrame(columns = columns)
+        #columns = system_fn.columns[1:]
+        #columns = [int(col) for col in system_fn.iloc[:, 1:]]
+        df_graph = pd.DataFrame(columns = T_return_list)
         df_graph['proc'] = np.arange(0,1.001,0.001)
         df_graph['demand'] = df_graph['proc'] * typologies_demand[i]
         
         # Filling df_graph with values for tank size i.r.t. yearly demands. Calculating back to m3 using surface area.
-        for i, col in enumerate(columns):
-            df_graph[str(col)] = (func_system_curve_inv(df_graph["demand"],
-                                                                  df_vars["a"][int(col)],
-                                                                  df_vars["b"][int(col)],
-                                                                  df_vars["n"][int(col)]) / 1000) * typologies_area[i]
+        for j, col in enumerate(T_return_list):
+            print(j,col)
+            df_graph[col] = (func_system_curve_inv(df_graph["demand"],
+                                                                  df_vars["a"][col],
+                                                                  df_vars["b"][col],
+                                                                  df_vars["n"][col]) / 1000) * typologies_area[i]
            
         # Plotting curves
         for i, col in enumerate(T_return_list):
-            plt.plot(df_graph['proc']*100, df_graph[str(col)], label=f'{typology} T{col}', color=cmap_i[i])
+            plt.plot(df_graph['proc']*100, df_graph[col], label=f'{typology} T{col}', color=cmap_i[i])
         
         # Plotting ambitions
         if ambitions:
