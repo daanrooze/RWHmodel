@@ -48,21 +48,18 @@ class TimeSeries:
         df["datetime"] = pd.to_datetime(df["datetime"], format="%d-%m-%Y %H:%M")
         df = df.set_index("datetime")
 
-        if self.t_start:
-            self.t_start = pd.to_datetime(self.t_start)
-        else:
-            self.t_start = df.index.min()
-        if self.t_end:
-            self.t_end = pd.to_datetime(self.t_end)
-        else:
-            self.t_end = df.index.max()
+        # Overwrite self with arguments if given.
+        self.timestep = self.timestep if self.timestep is not None else int((df.index[1] - df.index[0]).total_seconds())
+        self.t_start = pd.to_datetime(self.t_start) if self.t_start is not None else df.index.min()
+        self.t_end = pd.to_datetime(self.t_end) if self.t_end is not None else df.index.max()
+        
         self.num_years = (self.t_end - self.t_start) / (np.timedelta64(1, "W") * 52)
 
         # Resample if timestep is not same as df_datetime (already to self). If not given, set self.timestep based on provided forcing input
-        if timestep != int((df.index[1] - df.index[0]).total_seconds()):
+        if self.timestep != int((df.index[1] - df.index[0]).total_seconds()):
             df = df.resample(f"{timestep}s", label="right").sum()
-        else:
-            self.timestep = int((df.index[1] - df.index[0]).total_seconds())
+        #else:
+        #    self.timestep = int((df.index[1] - df.index[0]).total_seconds())
 
         mask = (df.index > self.t_start) & (df.index <= self.t_end)
         df = df.loc[mask]
@@ -137,10 +134,12 @@ class Demand(TimeSeries):
             timestep=timestep,
         )
 
+        self.yearly_demand = np.round(float((self.data["demand"].sum())/self.num_years),1)
+
         if unit == "m3":  # Convert to mm
-            if surface_area := setup_fn.get("srf_area"):
-                self.demand = convert_m3_to_mm(
-                    df=self.demand, col="demand", surface_area=surface_area
+            if surface_area := setup_fn["srf_area"]:
+                self.data = convert_m3_to_mm(
+                    df=self.data, col="demand", surface_area=surface_area
                 )
             else:
                 raise ValueError(
