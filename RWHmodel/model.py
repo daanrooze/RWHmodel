@@ -70,7 +70,7 @@ class Model(object):
                 timestep = timestep,
                 t_start = t_start,
                 t_end = t_end,
-                unit = unit, #TODO: test unit conversion
+                unit = unit,
                 setup_fn = self.config
             )
         if self.forcing.timestep != self.demand.timestep:
@@ -83,6 +83,8 @@ class Model(object):
         self.hydro_model = HydroModel(int_cap = self.config['int_cap'])
         
         # Initiate reservoir
+        if not 'reservoir_cap' in self.config:
+            self.config['reservoir_cap'] = self.config['cap_min']
         self.reservoir = Reservoir(self.config['reservoir_cap'], reservoir_initial_state)
         
         
@@ -152,7 +154,7 @@ class Model(object):
         return df
 
  
-    def batch_run(self, method):
+    def batch_run(self, method, seasonal_variation=False):
         # Batch run function to obtain solution space and statistics on output.
         methods = ["total_days", "consecutive_days"]
         # Check if input is correct
@@ -165,7 +167,7 @@ class Model(object):
         dem_max = self.config["dem_max"]
         dem_step = self.config["dem_step"]
         demand_lst = list(range(dem_min, dem_max + 1, dem_step))
-        
+        # Create reservoir range
         cap_min = self.config["cap_min"]
         cap_max = self.config["cap_max"]
         cap_step = self.config["cap_step"]
@@ -180,7 +182,12 @@ class Model(object):
             dry_events = pd.DataFrame()
             req_storage = pd.DataFrame()
             for demand in demand_lst:
-                run_df = self.run(demand = np.full(len(self.forcing.data["precip"]), demand), reservoir_cap = reservoir_cap, save = False)
+                # Apply seasonal variation function if true
+                if seasonal_variation:
+                    demand = Demand.seasonal_variation(demand)
+                else:
+                    demand = np.full(len(self.forcing.data["precip"]), demand)
+                run_df = self.run(demand = demand, reservoir_cap = reservoir_cap, save = False)
                 if method == "consecutive_days": 
                     dry_events = run_df["consec_dry_days"].sort_values(ascending = False).to_frame()
                     dry_events = dry_events.reset_index(drop = True)
@@ -215,7 +222,7 @@ class Model(object):
         df_system["tank_size"] = capacity_lst
         df_system = df_system.set_index("tank_size")
         self.results = df_system
-        df_system.to_csv(f"{self.root}/output/runs/batch_run.csv") #TODO: change save name
+        df_system.to_csv(f"{self.root}/output/statistics/batch_run_{method}.csv") #TODO: change save name
     
     def plot(
         self,
@@ -223,7 +230,6 @@ class Model(object):
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
         fn: Optional[str] = None,
-        **kwargs
     ):
         plot_types = ["meteo", "run", "system_curve", "saving_curve"]
         if plot_type not in plot_types:
@@ -233,16 +239,11 @@ class Model(object):
         # Overwrite self with arguments if given.
         t_start = t_start if t_start is not None else self.forcing.t_start
         t_end = t_end if t_end is not None else self.forcing.t_end
-        #if t_start:
-        #    t_start = pd.to_datetime(t_start)
-        #else:
-        #    t_start = self.t_start
-        #if t_end:
-        #    t_end = pd.to_datetime(t_end)
-        #else:
-        #    t_end = self.t_end
         
-        
+        if fn:
+            fn = pd.read_csv(fn, sep=',')
+        else:
+            fn = self.results
         
         if plot_type == "meteo":
             plot_meteo(
@@ -255,35 +256,48 @@ class Model(object):
             )
         
         if plot_type == "run":
-            if fn:
-                run_fn = pd.read_csv(fn, sep=',')
-            else:
-                run_fn = self.results
+            #if fn:
+            #    run_fn = pd.read_csv(fn, sep=',')
+            #else:
+            #    run_fn = self.results
             plot_run(
                 self.root,
                 self.name,
-                run_fn,
+                fn,
                 t_start,
                 t_end,
                 self.reservoir.reservoir_cap,
                 self.demand.yearly_demand
             )
         
-        if plot_type == "plot_system_curve":
-            if fn:
-                system_fn = pd.read_csv(fn, sep=',')
-            else:
-                system_fn = self.results
+        if plot_type == "system_curve":
+            #if fn:
+            #    system_fn = pd.read_csv(fn, sep=',')
+            #else:
+            #    system_fn = self.results
             plot_system_curve(
                 self.root,
                 self.name,
-                system_fn,
+                fn,
                 self.config['max_num_days'],
+                self.config['dem_max'],
+                self.config['T_return_list'],
                 validation = False
             )
         
-        if plot_type == "plot_saving_curve":
-            pass
+        if plot_type == "saving_curve":
+            plot_saving_curve(
+                self.root,
+                self.name,
+                fn,
+                self.config['max_num_days'],
+                self.config['typologies_name'],
+                self.config['typologies_demand'],
+                self.config['typologies_area'],
+                self.config['T_return_list'],
+                ambitions = None
+            )
+
 
         
         

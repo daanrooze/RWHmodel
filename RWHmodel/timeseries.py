@@ -148,6 +148,10 @@ class Demand(TimeSeries):
 
     def write(self, fn_out):
         self.write_timeseries(df=self.demand, subdir="demand", fn_out=fn_out)
+        
+    def seasonal_variation():
+        # insert function with sinus to implement seasonal variation.
+        pass
 
 
 class ConstantDemand:
@@ -158,3 +162,4 @@ class ConstantDemand:
     ) -> None:
         forcing_fn["demand"] = constant
         self.data = forcing_fn[["demand"]]
+
