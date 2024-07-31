@@ -15,15 +15,14 @@ from RWHmodel.plot import plot_meteo, plot_run, plot_system_curve, plot_saving_c
 
 
 class Model(object):
-    def __init__( # was first called "setup"
+    def __init__(
         self,
         root: str,
         name: str,
         setup_fn: str,
         forcing_fn: str,
-        reservoir_cap: float,
         reservoir_initial_state: float = 0,
-        timestep: Optional[int] = None,#86400,
+        timestep: Optional[int] = None,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
         demand_fn: Optional[str] = None,
@@ -84,13 +83,11 @@ class Model(object):
         self.hydro_model = HydroModel(int_cap = self.config['int_cap'])
         
         # Initiate reservoir
-        self.reservoir = Reservoir(reservoir_cap, reservoir_initial_state)
+        self.reservoir = Reservoir(self.config['reservoir_cap'], reservoir_initial_state)
         
         
 
     def setup_from_toml(self, setup_fn):
-        # TODO: parse config with code from config.py and call self.setup with arguments from config
-        # TODO: import area characteristics here.
         folder = f"{self.root}/input"
         with codecs.open(os.path.join(folder, setup_fn), "r", encoding="utf-8") as f:
             area_chars = toml.load(f)
@@ -100,26 +97,39 @@ class Model(object):
 
 
 
-    def run(self, demand, reservoir_cap=100, save=True):
+    def run(
+            self,
+            demand: Optional = None,
+            reservoir_cap: Optional = None,
+            save=True
+        ):
+        # Overwrite self with arguments if given.
+        demand = demand if demand is not None else np.array(self.demand.data["demand"])
+        reservoir_cap = reservoir_cap if reservoir_cap is not None else self.config["reservoir_cap"]
+        
         ## Initialize numpy arrays
         net_precip = np.array(self.forcing.data["precip"] - self.forcing.data["pet"])
-        demand = np.array(self.demand.data["demand"])
-        #demand = demand
-        #reservoir_cap = reservoir_cap
-       # reservoir_cap = self.area_chars.reservoir_cap
- 
+
         reservoir_stor = np.zeros(len(net_precip))
         reservoir_overflow = np.zeros(len(net_precip))
         deficit = np.zeros(len(net_precip))
         dry_days = np.zeros(len(net_precip))
         consec_dry_days = np.zeros(len(net_precip))
+        
         # Run hydro_model per timestep         
-        int_stor, runoff = HydroModel.update_state(self, net_precip=net_precip)   
+        int_stor, runoff = self.hydro_model.calc_runoff(net_precip=net_precip)   
+        
         # Fill tank arrays
         for i in range(1, len(net_precip)):
-            reservoir_stor[i] = min(max(0, reservoir_stor[i-1] + runoff[i] - demand[i]), reservoir_cap)
-            reservoir_overflow[i] =  max(0, reservoir_stor[i-1] + runoff[i] - demand[i] - reservoir_cap)
-            deficit[i] = max(0, demand[i] - reservoir_stor[i])
+            #reservoir_stor[i] = min(max(0, reservoir_stor[i-1] + runoff[i] - demand[i]), reservoir_cap)
+            #reservoir_overflow[i] =  max(0, reservoir_stor[i-1] + runoff[i] - demand[i] - reservoir_cap)
+            #deficit[i] = max(0, demand[i] - reservoir_stor[i])
+            self.reservoir.update_state(runoff = runoff[i], demand = demand[i])
+            reservoir_stor[i] = self.reservoir.reservoir_stor
+            reservoir_overflow[i] = self.reservoir.reservoir_overflow
+            deficit[i] = self.reservoir.deficit
+            
+            # Calculating days that reservoir does not suffice
             if reservoir_stor[i] >= demand[i]:
                 dry_days[i] = 0
             elif reservoir_stor[i] < demand[i]:
@@ -128,6 +138,7 @@ class Model(object):
                 consec_dry_days[i] = dry_days[i-1]
             else:
                 consec_dry_days[i] = 0
+        
         # Convert to dataframe
         df_data = {
             'reservoir_stor': reservoir_stor,
@@ -139,8 +150,6 @@ class Model(object):
             self.results = df
             df.to_csv(f"{self.root}/output/runs/single_run_{reservoir_cap}.csv") #TODO: change output name
         return df
- 
-        # TODO: add to plot script: Reservoir storage, overflow and deficit against volume (mm/day)
 
  
     def batch_run(self, method):
@@ -220,14 +229,17 @@ class Model(object):
             raise ValueError(
                 f"Provide valid plot type from {plot_types}."
             )
-        if t_start:
-            t_start = pd.to_datetime(t_start)
-        else:
-            t_start = self.t_start
-        if t_end:
-            t_end = pd.to_datetime(t_end)
-        else:
-            t_end = self.t_end
+        # Overwrite self with arguments if given.
+        t_start = t_start if t_start is not None else self.forcing.t_start
+        t_end = t_end if t_end is not None else self.forcing.t_end
+        #if t_start:
+        #    t_start = pd.to_datetime(t_start)
+        #else:
+        #    t_start = self.t_start
+        #if t_end:
+        #    t_end = pd.to_datetime(t_end)
+        #else:
+        #    t_end = self.t_end
         
         if plot_type == "meteo":
             plot_meteo(
@@ -247,11 +259,11 @@ class Model(object):
             plot_run(
                 self.root,
                 self.name,
-                self.results,
+                run_fn,
                 t_start,
                 t_end,
                 self.reservoir.reservoir_cap,
-                self.demand.yearly_demand
+                str((self.demand.data.sum())/self.demand.num_years)
             )
         
         if plot_type == "plot_system_curve":
