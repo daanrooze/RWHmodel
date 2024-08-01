@@ -116,8 +116,9 @@ class Forcing(TimeSeries):
 class Demand(TimeSeries):
     def __init__(
         self,
-        demand_fn: str,
         root: str,
+        demand_fn: str,
+        forcing_fn: str,
         timestep: Optional[int] = None,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
@@ -127,15 +128,20 @@ class Demand(TimeSeries):
         super().__init__(
             fn=demand_fn, root=root, timestep=timestep, t_start=t_start, t_end=t_end
         )
-        self.data = self.read_timeseries(
-            file_type="csv",
-            required_headers=["datetime", "demand"],
-            numeric_cols=["demand"],
-            timestep=timestep,
-        )
+        if isinstance(demand_fn, (int, float)):
+            forcing_fn["demand"] = demand_fn
+            self.fn = int
+            self.data = forcing_fn[["demand"]]
+            self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
+            
+        else:
+            self.data = self.read_timeseries(
+                file_type="csv",
+                required_headers=["datetime", "demand"],
+                numeric_cols=["demand"],
+                timestep=timestep,
+            )
 
-        self.yearly_demand = np.round(float((self.data["demand"].sum())/self.num_years),1)
-        
         self.unit = unit
         if unit == "m3":  # Convert to mm
             if surface_area := setup_fn["srf_area"]:
@@ -146,6 +152,7 @@ class Demand(TimeSeries):
                 raise ValueError(
                     "Missing surface area for converting m3 per timestep to mm per timestep"
                 )
+        self.yearly_demand = np.round(float((self.data["demand"].sum())/self.num_years),1)
 
     def write(self, fn_out):
         self.write_timeseries(df=self.demand, subdir="demand", fn_out=fn_out)
@@ -171,5 +178,8 @@ class ConstantDemand:
         constant: Union[int, float],
     ) -> None:
         forcing_fn["demand"] = constant
+        self.fn = int
         self.data = forcing_fn[["demand"]]
+        self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
+
 

@@ -1,12 +1,9 @@
-from RWHmodel.analysis import func_system_curve
-from RWHmodel.analysis import func_system_curve_inv
-from RWHmodel.analysis import func_fitting
+from RWHmodel.analysis import func_system_curve, func_system_curve_inv, func_fitting
+from RWHmodel.utils import convert_mm_to_m3
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
-
 
 ### COLOR MAPS
 # Default color map
@@ -16,10 +13,6 @@ cmap_g1 = ['#080c80', '#5f6199', '#9395b9', '#c9cadc']
 cmap_g2 = ['#00b389', '#5bc1a4', '#90d1c0', '#c6e7de']
 cmap_g3 = ['#ff960d', '#f8b05b', '#fbcb8f', '#fde4c6']
 cmap_g4 = ['#0ebbf0', '#62ccf1', '#96d9f2', '#c9ebf7']
-
-
-    
-
 
 def plot_meteo(
         root,
@@ -74,7 +67,7 @@ def plot_meteo(
     plt.grid(visible=True, which="minor", color="black", linestyle="-", alpha=0.1)
     
     # Legend
-    legend = fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05)) #TODO: maybe different layout for legend?
+    fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05)) #TODO: maybe different layout for legend?
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_forcing_{plot_name}_{t_start.year}_{t_start.month}-{t_end.year}_{t_end.month}.png", dpi=300, bbox_inches='tight')
@@ -91,6 +84,7 @@ def plot_run(
         yearly_demand
     ):
     df = run_fn
+    df_demand = demand_fn
     # Create plot
     fig, ax1 = plt.subplots(1, figsize=(14,6))
     
@@ -101,6 +95,8 @@ def plot_run(
              label = 'Reservoir overflow', color='#00b389')
     ax1.plot(df.index, df['deficit'], linewidth=2, linestyle='-',
              label = 'Deficit', color='#ff960d')
+    ax1.plot(df_demand.index, df_demand['demand'], linewidth=2, linestyle='-',
+             label = 'Demand', color='black')
     
     # Axes labels
     ax1.set_ylabel('Storage/overflow/deficit [mm]')
@@ -117,7 +113,7 @@ def plot_run(
     plt.grid(visible=True, which="minor", color="black", linestyle="-", alpha=0.1)
     
     # Legend
-    legend = fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05)) #TODO: maybe different layout for legend?
+    fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05)) #TODO: maybe different layout for legend?
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr_demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
@@ -129,7 +125,6 @@ def plot_system_curve(
         name,
         system_fn,
         max_num_days, # The maximum number of total OR consecutive days
-        max_demand,
         T_return_list = [1,2,5,10],
         validation = False
     ):    
@@ -144,16 +139,21 @@ def plot_system_curve(
     df_vars = func_fitting(system_fn, T_return_list)
     
     # Define maximum specific water demand (x-axis bounds)
-    x_max = max_demand  #max(demand_range)
+    x_max = np.max(system_fn)/2
     x_range = np.arange(0.01,x_max,1).astype('float64')
+    
+    # Define maximum reservoir_sizes (y-axis bounds)
+    y_max = np.round(np.max(df_vars),0)
     
     # Create plot
     fig, ax = plt.subplots(1, figsize=(8,6))
-    plt.axis([0, 500, 0, 1250]) #TODO: make variable of axis boundaries?
+    plt.axis([0, x_max, 0, y_max])
     
     for i, col in enumerate(T_return_list):
         # Plot system behavior curves
-        plt.plot(x_range, func_system_curve(x_range, df_vars["a"][float(col)], df_vars["b"][float(col)], df_vars["n"][float(col)]),
+        #plt.plot(x_range, func_system_curve(x_range, df_vars["a"][col], df_vars["b"][col], df_vars["n"][col]),
+        #         label=f'T{col}', color=cmap[i])
+        plt.plot(x_range, func_system_curve(x_range, df_vars.loc[str(col),"a"], df_vars.loc[str(col), "b"], df_vars.loc[str(col), "n"]),
                  label=f'T{col}', color=cmap[i])
         if validation:
             plt.scatter(system_fn['tank_size'], system_fn[str(col)], label=f'Raw data T{col}', color=cmap[i], alpha=0.4, s=75, marker='x')
@@ -168,7 +168,7 @@ def plot_system_curve(
     plt.grid(visible=True, which="major", color="black", linestyle="-", alpha=0.2)
     
     # Legend
-    legend = fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
+    fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{max_num_days}numdays.png", dpi=300, bbox_inches='tight')
@@ -197,8 +197,6 @@ def plot_saving_curve(
     fig, ax = plt.subplots(1, figsize=(8,6))
     plt.axis([0, 100, 0, 20]) #setting axis boundaries (xmin, xmax, ymin, ymax) #TODO: make variable of axis boundaries?
     
-    #typologies = list(typologies_demand)
-    
     # Create plot
     for i, typology in enumerate(typologies_name):
         cmap_i = cmap_list[i]
@@ -210,11 +208,14 @@ def plot_saving_curve(
         
         # Filling df_graph with values for tank size i.r.t. yearly demands. Calculating back to m3 using surface area.
         for j, col in enumerate(T_return_list):
-            print(j,col)
             df_graph[col] = (func_system_curve_inv(df_graph["demand"],
-                                                                  df_vars["a"][col],
-                                                                  df_vars["b"][col],
-                                                                  df_vars["n"][col]) / 1000) * typologies_area[i]
+                                                                  df_vars.loc[str(col), "a"],
+                                                                  df_vars.loc[str(col), "b"],
+                                                                  df_vars.loc[str(col), "n"]) / 1000) * typologies_area[i]
+            df_graph[col] = (func_system_curve_inv(df_graph["demand"],
+                                                                  df_vars.loc[str(col), "a"],
+                                                                  df_vars.loc[str(col), "b"],
+                                                                  df_vars.loc[str(col), "n"]) / 1000) * typologies_area[i]
            
         # Plotting curves
         for i, col in enumerate(T_return_list):
@@ -237,7 +238,7 @@ def plot_saving_curve(
     ax.set_ylabel('Required reservoir size [m3]')
     
     # Legend
-    legend = fig.legend(loc='right')
+    fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(typologies_name))
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_savings_curve_{max_num_days}numdays.png", dpi=300, bbox_inches='tight')

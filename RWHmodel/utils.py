@@ -46,3 +46,40 @@ def makedir(path: str) -> None:
     if not os.path.exists(path):
         print(f"{path} does not exist. Making new path.")
         os.makedirs(path)
+
+def check_variables(mode, config, seasonal_variation):
+    # List of required variables
+    if mode == "single":
+        variables = [
+            'max_num_days', 'srf_area', 'int_cap', 'reservoir_cap', 'shift', 'perc_constant'
+        ]
+    if mode == "batch":
+        variables = [
+            'max_num_days', 'T_return_list', 'int_cap', 'dem_min', 'dem_max',
+            'dem_step', 'cap_min', 'cap_max', 'cap_step', 'typologies_name',
+            'typologies_demand', 'typologies_area', 'shift', 'perc_constant',
+            'reservoir_cap'
+        ]
+
+    # List to store missing variables
+    missing_vars = []
+
+    # Check the common variables
+    for var in variables:
+        if var in ['shift', 'perc_constant']:
+            # Skip these two variables for now, check them later
+            continue
+        if var not in config:
+            missing_vars.append(var)
+
+    # Check 'shift' and 'perc_constant' if 'seasonal_variation' is True
+    if seasonal_variation:
+        if 'shift' not in config:
+            missing_vars.append('shift')
+        if 'perc_constant' not in config:
+            missing_vars.append('perc_constant')
+
+    # Raise ValueError if there are any missing variables
+    if missing_vars:
+        missing_vars_str = ', '.join(missing_vars)
+        raise ValueError(f"The following variables are missing in config: {missing_vars_str}")
