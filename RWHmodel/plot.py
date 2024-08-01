@@ -84,6 +84,7 @@ def plot_run(
         root,
         name,
         run_fn, # Path to run output file
+        demand_fn,
         t_start,
         t_end,
         reservoir_cap,

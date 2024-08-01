@@ -157,7 +157,7 @@ class Demand(TimeSeries):
             shift,
         ):
         # insert function with sinus to implement seasonal variation.
-        yearly_demand_constant = 0.96*yearly_demand
+        yearly_demand_constant = perc_constant*yearly_demand
         # transform yearly demand into daily demand.
         daily_demand_constant = yearly_demand_constant / 365
         A = -(((2*np.pi)/365) * (365 * daily_demand_constant - yearly_demand)) / (- np.cos(shift + 365 * ((2*np.pi)/365)) + np.cos(shift) + 365 * ((2*np.pi)/365))

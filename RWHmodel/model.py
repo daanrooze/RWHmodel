@@ -284,6 +284,7 @@ class Model(object):
                 root = self.root,
                 name = self.name,
                 run_fn = fn,
+                demand_fn = self.demand.data,
                 t_start = t_start,
                 t_end = t_end,
                 reservoir_cap = self.reservoir.reservoir_cap,
