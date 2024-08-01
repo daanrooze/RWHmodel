@@ -103,7 +103,7 @@ class Model(object):
             self,
             demand: Optional = None,
             reservoir_cap: Optional = None,
-            save=True
+            save=True,
         ):
         # Overwrite self with arguments if given.
         demand = demand if demand is not None else np.array(self.demand.data["demand"])
@@ -154,7 +154,12 @@ class Model(object):
         return df
 
  
-    def batch_run(self, method, seasonal_variation=False):
+    def batch_run(
+            self,
+            method,
+            seasonal_variation=False,
+            log=False
+        ):
         # Batch run function to obtain solution space and statistics on output.
         methods = ["total_days", "consecutive_days"]
         # Check if input is correct
@@ -178,10 +183,13 @@ class Model(object):
 
         df_system = pd.DataFrame(columns = T_range) 
         for reservoir_cap in capacity_lst:
+            
             df_total = pd.DataFrame()
             dry_events = pd.DataFrame()
             req_storage = pd.DataFrame()
             for demand in demand_lst:
+                if log == True:
+                    print(f"Running with reservoir capacity {reservoir_cap} mm and demand {demand}.")
                 # Apply seasonal variation function if true
                 if seasonal_variation:
                     demand = Demand.seasonal_variation(demand)

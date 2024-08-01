@@ -1,4 +1,4 @@
-
+"""
 class setup_from_toml:
     def __init__(
         self
@@ -21,4 +21,4 @@ class setup_from_toml:
         area_chars = self.read_area_characteristics(area_chars_fn)
         self.area_chars = area_chars
 
- 
+ """
