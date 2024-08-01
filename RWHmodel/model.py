@@ -75,23 +75,7 @@ class Model(object):
             unit = unit,
             setup_fn = self.config
         )
-        """
-        if type(demand_fn) in [float, int]:
-            self.demand = ConstantDemand(
-                forcing_fn = self.forcing.data,
-                constant = demand_fn
-            )
-        else:
-            self.demand = Demand(
-                root = root,
-                demand_fn = demand_fn,
-                timestep = timestep,
-                t_start = t_start,
-                t_end = t_end,
-                unit = unit,
-                setup_fn = self.config
-            )
-        """
+
         if self.forcing.timestep != self.demand.timestep:
             raise ValueError("Forcing and demand timeseries have different timesteps. Change input files or resample by specifying timestep.")
         if len(self.forcing.data) != len(self.demand.data):
@@ -131,12 +115,8 @@ class Model(object):
                 yearly_demand = demand_array[0] * 365
             else:
                 yearly_demand = demand_array[0] * 24 * 365
-            A, daily_demand_constant = self.demand.seasonal_variation(yearly_demand = yearly_demand, perc_constant = self.config["perc_constant"],shift= self.config["shift"])
-            daily_demand_array = []
-            for t in range(len(self.forcing.data["precip"])):
-                daily_tot = A * np.sin(((2*np.pi)/365)*t+self.config["shift"]) + daily_demand_constant + A
-                daily_demand_array.append(daily_tot)
-            demand_array = daily_demand_array
+            demand_array = self.demand.seasonal_variation(yearly_demand = yearly_demand, perc_constant = self.config["perc_constant"], shift= self.config["shift"])
+            self.demand.data["demand"] = demand_array
         
         reservoir_cap = reservoir_cap if reservoir_cap is not None else self.config["reservoir_cap"]
         
@@ -179,11 +159,11 @@ class Model(object):
             'consec_dry_days': consec_dry_days}
         df = pd.DataFrame(df_data, index = self.forcing.data['precip'].index)
         if save==True:
-            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={reservoir_cap}_demand={demand}.csv")
+            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={reservoir_cap}_yr_demand={self.demand.yearly_demand}.csv")
         self.results = df
         return df
 
- 
+    """ chat gpt versie:
     def batch_run(
             self,
             method,
@@ -224,9 +204,10 @@ class Model(object):
             df_total = pd.DataFrame()
             dry_events = pd.DataFrame()
             req_storage = pd.DataFrame()
+            opt_demand_df = pd.DataFrame()
             for demand in demand_lst:
-                if log == True:
-                    print(f"Running with reservoir capacity {reservoir_cap} mm and demand {demand}.")
+                if log:
+                    print(f"Running with reservoir capacity {np.round(reservoir_cap,1)} mm and demand {np.round(demand,1)}.")
                 
                 run_df = self.run(demand = demand, reservoir_cap = reservoir_cap, save = save, seasonal_variation = seasonal_variation)
                 
@@ -242,6 +223,7 @@ class Model(object):
                 df_total = pd.concat([df_total, dry_events[[f'{demand}']]], axis=1)
             df_total['T_return'] = self.forcing.num_years / (df_total.index + 1)
             req_storage = return_period(df_total, self.config["T_return_list"])
+            print("req_storage", req_storage) #TODO: remove later
             # Find optimal demand for specific reservoir size
             opt_demand_lst = []
             for column in req_storage.columns:
@@ -252,19 +234,112 @@ class Model(object):
                     if not boundary_condition.empty:
                         # Get the last index from the filtered results
                         opt_demand = int(boundary_condition[-1])
-                        opt_demand_lst.append(opt_demand)
+                        opt_demand_lst.append(demand_lst[opt_demand])
                     else:
                         # Append 0 if no valid index was found
                         opt_demand_lst.append(0)
-                except Exception as e:
+                except Exception:
                     opt_demand_lst.append(0)
-
             opt_demand_df = pd.DataFrame([opt_demand_lst], columns = self.config["T_return_list"])
-            df_system = pd.concat([df_system, opt_demand_df])
+            df_system = pd.concat([df_system, opt_demand_df], ignore_index=True)
         df_system["reservoir_size"] = capacity_lst
-        df_system = df_system.set_index("reservoir_size")
+        #df_system = df_system.set_index("reservoir_size")
         self.statistics = df_system
         df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv")
+    """
+    
+    def batch_run(
+        self,
+        method,
+        seasonal_variation=False,
+        log=False,
+        save=False
+    ):
+        # Batch run function to obtain solution space and statistics on output.
+        self.mode = 'batch'
+        check_variables(self.mode, self.config, seasonal_variation)
+        # Check if input is correct
+        methods = ["total_days", "consecutive_days"]
+        if method not in methods:
+            raise ValueError(f"Provide valid method from {methods}.")
+        if self.unit != "mm" and len(self.config["typologies_name"]) > 1:
+            raise ValueError(
+                "Ambiguous surface area. Unit conversion can only be used for a maximum of one surface area."
+            )
+    
+        # Define parameters
+        dem_min = self.config["dem_min"]
+        dem_max = self.config["dem_max"]
+        dem_step = self.config["dem_step"]
+        demand_lst = list(np.arange(dem_min, dem_max, dem_step))
+        # Create reservoir range
+        cap_min = self.config["cap_min"]
+        cap_max = self.config["cap_max"]
+        cap_step = self.config["cap_step"]
+        capacity_lst = list(np.arange(cap_min, cap_max, cap_step))
+        
+        max_num_days = self.config["max_num_days"]
+    
+        # Initialize df_system outside the loop
+        df_system = pd.DataFrame(columns=self.config["T_return_list"]) 
+    
+        for reservoir_cap in capacity_lst:
+            
+            df_total = pd.DataFrame()
+            dry_events = pd.DataFrame()
+            req_storage = pd.DataFrame()
+            
+            for demand in demand_lst:
+                if log:
+                    print(f"Running with reservoir capacity {np.round(reservoir_cap, 1)} mm and demand {np.round(demand, 1)}.")
+                
+                run_df = self.run(demand=demand, reservoir_cap=reservoir_cap, save=save, seasonal_variation=seasonal_variation)
+                
+                if method == "consecutive_days": 
+                    dry_events = run_df["consec_dry_days"].sort_values(ascending=False).to_frame()
+                    dry_events = dry_events.reset_index(drop=True)
+                    dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
+                if method == "total_days": 
+                    run_df_yearly = run_df.resample('YE').sum()
+                    dry_events = run_df_yearly["consec_dry_days"].sort_values(ascending=False).to_frame()
+                    dry_events = dry_events.reset_index(drop=True)
+                    dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
+                    
+                df_total = pd.concat([df_total, dry_events[[f'{demand}']]], axis=1)
+            
+            df_total['T_return'] = self.forcing.num_years / (df_total.index + 1)
+            req_storage = return_period(df_total, self.config["T_return_list"])
+            print("req_storage", req_storage)  # TODO: remove later
+            
+            # Find optimal demand for specific reservoir size
+            opt_demand_lst = []
+            for column in req_storage.columns:
+                try:
+                    # Filter rows where the value in the column is less than or equal to max_num_days
+                    boundary_condition = req_storage[req_storage[column] <= max_num_days].index
+                    # Check if there are any indices that meet the condition
+                    if not boundary_condition.empty:
+                        # Get the last index from the filtered results
+                        opt_demand = int(boundary_condition[-1])
+                        opt_demand_lst.append(demand_lst[opt_demand])
+                    else:
+                        # Append 0 if no valid index was found
+                        opt_demand_lst.append(0)
+                except Exception:
+                    opt_demand_lst.append(0)
+            
+            # Create a DataFrame for the current reservoir size's results
+            opt_demand_df = pd.DataFrame([opt_demand_lst], columns=self.config["T_return_list"])
+            # Add the reservoir size as a new column to this DataFrame
+            opt_demand_df["reservoir_size"] = reservoir_cap
+            # Append this DataFrame to df_system
+            df_system = pd.concat([df_system, opt_demand_df], ignore_index=True)
+    
+        # Optionally set the index to reservoir_size, if needed
+        # df_system = df_system.set_index("reservoir_size")
+        self.statistics = df_system
+        df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv")
+
     
     def plot(
         self,

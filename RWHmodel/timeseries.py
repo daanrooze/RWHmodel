@@ -130,10 +130,10 @@ class Demand(TimeSeries):
         )
         if isinstance(demand_fn, (int, float)):
             forcing_fn["demand"] = demand_fn
-            self.fn = int
             self.data = forcing_fn[["demand"]]
+            self.fn = int
+            self.num_years = (max(forcing_fn.index) - min(forcing_fn.index)) / (np.timedelta64(1, "W") * 52)
             self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
-            
         else:
             self.data = self.read_timeseries(
                 file_type="csv",
@@ -165,10 +165,16 @@ class Demand(TimeSeries):
         ):
         # insert function with sinus to implement seasonal variation.
         yearly_demand_constant = perc_constant*yearly_demand
+        start_day_of_year = self.t_start.day_of_year-1
         # transform yearly demand into daily demand.
         daily_demand_constant = yearly_demand_constant / 365
         A = -(((2*np.pi)/365) * (365 * daily_demand_constant - yearly_demand)) / (- np.cos(shift + 365 * ((2*np.pi)/365)) + np.cos(shift) + 365 * ((2*np.pi)/365))
-        return A, daily_demand_constant
+        daily_demand_array = []
+        for t in np.arange(start_day_of_year,start_day_of_year+(self.t_end - self.t_start).days): 
+            daily_tot = A * np.sin(((2*np.pi)/365)*t+shift) + daily_demand_constant + A
+            daily_demand_array.append(daily_tot)
+        demand_array = daily_demand_array
+        return demand_array
 
 
 class ConstantDemand:
