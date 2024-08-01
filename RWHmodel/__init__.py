@@ -8,7 +8,6 @@ DATADIR = abspath(join(dirname(__file__), "data"))
 
 __version__ = "0.1.0"
 
-from RWHmodel.config import *
 from RWHmodel.model import *
 from RWHmodel.reservoir import *
 from RWHmodel.hydro_model import *
