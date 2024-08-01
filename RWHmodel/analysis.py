@@ -7,7 +7,10 @@ def func_log(a, b, x):
     return a * np.log(x) + b
 
 
-def return_period(df): #TODO: variabelen namen nalopen. Deze komen nog uit UWBM
+def return_period(
+        df,
+        T_return_list = [1,2,5,10,20,50,100]
+    ): #TODO: variabelen namen nalopen. Deze komen nog uit UWBM
     colnames = df.columns[:-1]
     df_vars = pd.DataFrame(columns=["q", "a", "b"], dtype='float64')
     df_vars["q"] = np.zeros(len(df.keys()[:-1]))
@@ -26,7 +29,7 @@ def return_period(df): #TODO: variabelen namen nalopen. Deze komen nog uit UWBM
  
     # Calculate required storage capacity for a set of return periods
     req_storage = pd.DataFrame()
-    req_storage["Treturn"] = [1, 2, 5, 10, 20, 50, 100]
+    req_storage["Treturn"] = T_return_list
     for i, key in enumerate(df_vars["q"]):
         req_storage[key] = func_log(df_vars["a"][i], df_vars["b"][i], req_storage["Treturn"])
     req_storage = req_storage.set_index("Treturn")
@@ -39,6 +42,9 @@ def func_fitting(
         system_fn, # Path to saved system file
         T_return_list = [1,2,5,10,20,50,100]
     ):
+    # Reset index for df_system
+    df_system = system_fn.reset_index()
+    
     df_vars = pd.DataFrame(columns=["a", "b", "n"])
     df_vars["Treturn"] = T_return_list
     df_vars = df_vars.set_index("Treturn")
@@ -47,14 +53,14 @@ def func_fitting(
     for i, col in enumerate(T_return_list):
         # Determine initial conditions
         # Check https://stackoverflow.com/questions/45554107/asymptotic-regression-in-python for assumptions
-        a0 = system_fn[str(col)].max()
-        b0 = system_fn.iloc[(system_fn[str(col)]-(a0 / 2)).abs().argsort()[:1]].tank_size
+        a0 = df_system[col].max()
+        b0 = df_system.iloc[(df_system[col]-(a0 / 2)).abs().argsort()[:1]].tank_size#.index
         n0 = 1.
         p0 = [a0, float(b0.iloc[0]), n0]
         #p0 = [float(a0), float(b0), float(n0)]
         
         # Curve fit using Scipy
-        popt, pcov = curve_fit(func_system_curve, system_fn['tank_size'], system_fn[str(col)], p0=p0)
+        popt, pcov = curve_fit(func_system_curve, df_system['tank_size'], df_system[col], p0=p0)
         
         # Store [a, b, n] variables in DataFrame
         df_vars.loc[col] = popt

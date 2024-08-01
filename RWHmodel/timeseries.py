@@ -135,7 +135,8 @@ class Demand(TimeSeries):
         )
 
         self.yearly_demand = np.round(float((self.data["demand"].sum())/self.num_years),1)
-
+        
+        self.unit = unit
         if unit == "m3":  # Convert to mm
             if surface_area := setup_fn["srf_area"]:
                 self.data = convert_m3_to_mm(
@@ -149,9 +150,18 @@ class Demand(TimeSeries):
     def write(self, fn_out):
         self.write_timeseries(df=self.demand, subdir="demand", fn_out=fn_out)
         
-    def seasonal_variation():
+    def seasonal_variation(
+            self, 
+            yearly_demand,  
+            perc_constant,
+            shift,
+        ):
         # insert function with sinus to implement seasonal variation.
-        pass
+        yearly_demand_constant = 0.96*yearly_demand
+        # transform yearly demand into daily demand.
+        daily_demand_constant = yearly_demand_constant / 365
+        A = -(((2*np.pi)/365) * (365 * daily_demand_constant - yearly_demand)) / (- np.cos(shift + 365 * ((2*np.pi)/365)) + np.cos(shift) + 365 * ((2*np.pi)/365))
+        return A, daily_demand_constant
 
 
 class ConstantDemand:

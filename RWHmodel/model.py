@@ -45,6 +45,9 @@ class Model(object):
         else:
             raise ValueError("Provide model run name")
         
+        if timestep is not None and timestep not in [3600, 86400]:
+            raise ValueError("Provide model timestep in 3600 or 86400 seconds")
+        
         # Setup of area characteristics
         self.setup_from_toml(setup_fn=setup_fn)
         
@@ -87,26 +90,35 @@ class Model(object):
             self.config['reservoir_cap'] = self.config['cap_min']
         self.reservoir = Reservoir(self.config['reservoir_cap'], reservoir_initial_state)
         
-        
-
     def setup_from_toml(self, setup_fn):
         folder = f"{self.root}/input"
         with codecs.open(os.path.join(folder, setup_fn), "r", encoding="utf-8") as f:
             area_chars = toml.load(f)
         
         self.config = area_chars
-        #return area_chars
-
-
 
     def run(
             self,
             demand: Optional = None,
+            seasonal_variation = False,
             reservoir_cap: Optional = None,
             save=True,
         ):
         # Overwrite self with arguments if given.
-        demand = demand if demand is not None else np.array(self.demand.data["demand"])
+        demand_array = np.full(len(self.forcing.data["precip"]), demand) if demand is not None else np.array(self.demand.data["demand"])
+        if seasonal_variation:
+            if self.demand.timestep == 86400:
+                yearly_demand = demand_array[0] * 365
+            else:
+                yearly_demand = demand_array[0] * 24 * 365
+            A, daily_demand_constant = self.demand.seasonal_variation(yearly_demand = yearly_demand, perc_constant = self.config["perc_constant"],shift= self.config["shift"])
+            daily_demand_array = []
+            for t in range(len(self.forcing.data["precip"])):
+                daily_tot = A * np.sin(((2*np.pi)/365)*t+self.config["shift"]) + daily_demand_constant + A
+                daily_demand_array.append(daily_tot)
+            demand_array = daily_demand_array
+        else:
+            demand_array = demand_array
         reservoir_cap = reservoir_cap if reservoir_cap is not None else self.config["reservoir_cap"]
         
         ## Initialize numpy arrays
@@ -123,18 +135,17 @@ class Model(object):
         
         # Fill tank arrays
         for i in range(1, len(net_precip)):
-            #reservoir_stor[i] = min(max(0, reservoir_stor[i-1] + runoff[i] - demand[i]), reservoir_cap)
-            #reservoir_overflow[i] =  max(0, reservoir_stor[i-1] + runoff[i] - demand[i] - reservoir_cap)
-            #deficit[i] = max(0, demand[i] - reservoir_stor[i])
-            self.reservoir.update_state(runoff = runoff[i], demand = demand[i])
+            #reservoir_stor[i] = min(max(0, reservoir_stor[i-1] + runoff[i] - demand[i]), reservoir_cap) #TODO: remove
+            #reservoir_overflow[i] =  max(0, reservoir_stor[i-1] + runoff[i] - demand[i] - reservoir_cap) #TODO: remove
+            #deficit[i] = max(0, demand[i] - reservoir_stor[i]) #TODO: remove
+            self.reservoir.update_state(runoff = runoff[i], demand = demand_array[i])
             reservoir_stor[i] = self.reservoir.reservoir_stor
             reservoir_overflow[i] = self.reservoir.reservoir_overflow
             deficit[i] = self.reservoir.deficit
-            
             # Calculating days that reservoir does not suffice
-            if reservoir_stor[i] >= demand[i]:
+            if reservoir_stor[i] >= demand_array[i]:
                 dry_days[i] = 0
-            elif reservoir_stor[i] < demand[i]:
+            elif reservoir_stor[i] < demand_array[i]:
                 dry_days[i] = dry_days[i-1] + 1
             if dry_days[i-1] != 0 and dry_days[i] == 0:
                 consec_dry_days[i] = dry_days[i-1]
@@ -149,8 +160,8 @@ class Model(object):
             'consec_dry_days': consec_dry_days}
         df = pd.DataFrame(df_data, index = self.forcing.data['precip'].index)
         if save==True:
-            self.results = df
-            df.to_csv(f"{self.root}/output/runs/single_run_{reservoir_cap}.csv") #TODO: change output name
+            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={reservoir_cap}_demand={demand}.csv")
+        self.results = df
         return df
 
  
@@ -158,7 +169,8 @@ class Model(object):
             self,
             method,
             seasonal_variation=False,
-            log=False
+            log=False,
+            save=False #TODO: veranderd
         ):
         # Batch run function to obtain solution space and statistics on output.
         methods = ["total_days", "consecutive_days"]
@@ -167,21 +179,27 @@ class Model(object):
             raise ValueError(
                 f"Provide valid method from {methods}."
             )
+        if self.demand.unit != "mm" and len(self.config["typologies_name"]) > 1:  #TODO: veranderd
+            raise ValueError(  #TODO: veranderd
+                "Ambiguous surface area. Unit conversion can only be used for a maxmimum of one surface area."  #TODO: veranderd
+            )  #TODO: veranderd
+        #TODO: schrijf check of alle .config waardes aanwezig zijn
+        
         # Define parameters
         dem_min = self.config["dem_min"]
         dem_max = self.config["dem_max"]
         dem_step = self.config["dem_step"]
-        demand_lst = list(range(dem_min, dem_max + 1, dem_step))
+        demand_lst = list(np.arange(dem_min, dem_max, dem_step)) #TODO: veranderd
         # Create reservoir range
         cap_min = self.config["cap_min"]
         cap_max = self.config["cap_max"]
         cap_step = self.config["cap_step"]
-        capacity_lst = list(range(cap_min, cap_max + 1, cap_step))
+        capacity_lst = list(np.arange(cap_min, cap_max, cap_step)) #TODO: veranderd
         
-        T_range = self.config["T_return_list"]
+        #T_range = self.config["T_return_list"]
         max_num_days = self.config["max_num_days"]
 
-        df_system = pd.DataFrame(columns = T_range) 
+        df_system = pd.DataFrame(columns = self.config["T_return_list"]) 
         for reservoir_cap in capacity_lst:
             
             df_total = pd.DataFrame()
@@ -190,12 +208,9 @@ class Model(object):
             for demand in demand_lst:
                 if log == True:
                     print(f"Running with reservoir capacity {reservoir_cap} mm and demand {demand}.")
-                # Apply seasonal variation function if true
-                if seasonal_variation:
-                    demand = Demand.seasonal_variation(demand)
-                else:
-                    demand = np.full(len(self.forcing.data["precip"]), demand)
-                run_df = self.run(demand = demand, reservoir_cap = reservoir_cap, save = False)
+                
+                run_df = self.run(demand = demand, reservoir_cap = reservoir_cap, save = save, seasonal_variation = seasonal_variation) #TODO: veranderd
+                
                 if method == "consecutive_days": 
                     dry_events = run_df["consec_dry_days"].sort_values(ascending = False).to_frame()
                     dry_events = dry_events.reset_index(drop = True)
@@ -207,7 +222,7 @@ class Model(object):
                     dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
                 df_total = pd.concat([df_total, dry_events[[f'{demand}']]], axis=1)
             df_total['T_return'] = self.forcing.num_years / (df_total.index + 1)
-            req_storage = return_period(df_total)
+            req_storage = return_period(df_total, self.config["T_return_list"])
             # Find optimal demand for specific tank size
             opt_demand_lst = []
             for column in req_storage.columns:
@@ -225,12 +240,12 @@ class Model(object):
                 except Exception as e:
                     opt_demand_lst.append(0)
 
-            opt_demand_df = pd.DataFrame([opt_demand_lst], columns = T_range)
+            opt_demand_df = pd.DataFrame([opt_demand_lst], columns = self.config["T_return_list"])
             df_system = pd.concat([df_system, opt_demand_df])
         df_system["tank_size"] = capacity_lst
         df_system = df_system.set_index("tank_size")
-        self.results = df_system
-        df_system.to_csv(f"{self.root}/output/statistics/batch_run_{method}.csv") #TODO: change save name
+        self.statistics = df_system #TODO: veranderd
+        df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv") #TODO: veranderd
     
     def plot(
         self,
@@ -238,6 +253,8 @@ class Model(object):
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
         fn: Optional[str] = None,
+        T_return_list: Optional[[int]] = None,
+        **kwargs
     ):
         plot_types = ["meteo", "run", "system_curve", "saving_curve"]
         if plot_type not in plot_types:
@@ -245,64 +262,64 @@ class Model(object):
                 f"Provide valid plot type from {plot_types}."
             )
         # Overwrite self with arguments if given.
-        t_start = t_start if t_start is not None else self.forcing.t_start
-        t_end = t_end if t_end is not None else self.forcing.t_end
-        
-        if fn:
-            fn = pd.read_csv(fn, sep=',')
-        else:
-            fn = self.results
+        t_start = pd.to_datetime(t_start) if t_start is not None else self.forcing.t_start
+        t_end = pd.to_datetime(t_end) if t_end is not None else self.forcing.t_end
         
         if plot_type == "meteo":
             plot_meteo(
-                self.root,
-                self.name,
-                self.forcing.data,
-                t_start,
-                t_end,
+                root = self.root,
+                name = self.name,
+                forcing_fn = self.forcing.data,
+                t_start = t_start,
+                t_end = t_end,
                 aggregate = False
             )
         
         if plot_type == "run":
-            #if fn:
-            #    run_fn = pd.read_csv(fn, sep=',')
-            #else:
-            #    run_fn = self.results
+            if fn:
+                fn = pd.read_csv(fn, sep=',')
+            else:
+                fn = self.results
             plot_run(
-                self.root,
-                self.name,
-                fn,
-                t_start,
-                t_end,
-                self.reservoir.reservoir_cap,
-                self.demand.yearly_demand
+                root = self.root,
+                name = self.name,
+                run_fn = fn,
+                t_start = t_start,
+                t_end = t_end,
+                reservoir_cap = self.reservoir.reservoir_cap,
+                yearly_demand = self.demand.yearly_demand
             )
         
+        if plot_type in ["system_curve", "saving_curve"]:
+            if fn:
+                fn = pd.read_csv(fn, sep=',')
+            else:
+                fn = self.statistics
+            
+            if T_return_list is None:
+                   T_return_list = self.config['T_return_list']  # Use default from config if not provided
+        
         if plot_type == "system_curve":
-            #if fn:
-            #    system_fn = pd.read_csv(fn, sep=',')
-            #else:
-            #    system_fn = self.results
             plot_system_curve(
-                self.root,
-                self.name,
-                fn,
-                self.config['max_num_days'],
-                self.config['dem_max'],
-                self.config['T_return_list'],
+                root = self.root,
+                name = self.name,
+                system_fn = fn,
+                max_num_days = self.config['max_num_days'],
+                max_demand = self.config['dem_max'],
+                T_return_list = T_return_list,
                 validation = False
             )
         
         if plot_type == "saving_curve":
             plot_saving_curve(
-                self.root,
-                self.name,
-                fn,
-                self.config['max_num_days'],
-                self.config['typologies_name'],
-                self.config['typologies_demand'],
-                self.config['typologies_area'],
-                self.config['T_return_list'],
+                root = self.root,
+                name = self.name,
+                system_fn = fn,
+                max_num_days = self.config['max_num_days'],
+                typologies_name = self.config['typologies_name'],
+                typologies_demand = self.config['typologies_demand'],
+                typologies_area = self.config['typologies_area'],
+                T_return_list = T_return_list,
                 ambitions = None
             )
 
