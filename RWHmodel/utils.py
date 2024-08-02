@@ -20,7 +20,7 @@ def convert_m3_to_mm(df: pd.DataFrame, col: str, surface_area: float) -> pd.Data
     -------
     pd.DataFrame
     """
-    df[col] = (df[col] / surface_area) * 1000
+    df.loc[:, col] = (df.loc[:, col] / surface_area) * 1000
     return df
 
 def convert_mm_to_m3(df: pd.DataFrame, col: str, surface_area: float) -> pd.DataFrame:
@@ -38,7 +38,7 @@ def convert_mm_to_m3(df: pd.DataFrame, col: str, surface_area: float) -> pd.Data
     -------
     pd.DataFrame
     """
-    df[col] = (df[col] / 1000) * surface_area
+    df.loc[:, col] = (df.loc[:, col] / 1000) * surface_area
     return df
 
 def makedir(path: str) -> None:

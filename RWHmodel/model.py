@@ -8,7 +8,7 @@ import toml
 from RWHmodel.reservoir import Reservoir
 from RWHmodel.timeseries import ConstantDemand, Demand, Forcing
 from RWHmodel.hydro_model import HydroModel
-from RWHmodel.utils import makedir, check_variables
+from RWHmodel.utils import makedir, check_variables, convert_mm_to_m3
 from RWHmodel.analysis import return_period
 
 from RWHmodel.plot import plot_meteo, plot_run, plot_system_curve, plot_saving_curve
@@ -84,9 +84,13 @@ class Model(object):
         # Initiate hydro_model
         self.hydro_model = HydroModel(int_cap = self.config['int_cap'])
         
-        # Initiate reservoir
+        # Set reservoir capacity
         if not 'reservoir_cap' in self.config:
             self.config['reservoir_cap'] = self.config['cap_min']
+        # Convert reservoir capacity to mm if unit set to "m3".
+        if self.unit == "m3":
+            self.config['reservoir_cap'] = (self.config['reservoir_cap'] / self.config["srf_area"]) * 1000
+        # Initiate reservoir
         self.reservoir = Reservoir(self.config['reservoir_cap'], reservoir_initial_state)
         
     def setup_from_toml(self, setup_fn):
@@ -105,7 +109,7 @@ class Model(object):
         ):
         # Overwrite self with arguments if given.
         demand_array = np.full(len(self.forcing.data["precip"]), demand) if demand is not None else np.array(self.demand.data["demand"])
-        # Implement seasonal variation transformation if given. #TODO: set new data array to self
+        # Implement seasonal variation transformation if given.
         if type(self.demand.fn)==str and seasonal_variation==True:
             raise ValueError(
                 "Cannot transpose timeseries with seasonal variation."
@@ -115,14 +119,20 @@ class Model(object):
                 yearly_demand = demand_array[0] * 365
             else:
                 yearly_demand = demand_array[0] * 24 * 365
-            demand_array = self.demand.seasonal_variation(yearly_demand = yearly_demand, perc_constant = self.config["perc_constant"], shift= self.config["shift"])
-            self.demand.data["demand"] = demand_array
+            
+            demand_array = self.demand.seasonal_variation(
+                yearly_demand = yearly_demand,
+                perc_constant = self.config["perc_constant"],
+                shift= self.config["shift"],
+                t_start = self.forcing.t_start,
+                t_end = self.forcing.t_end
+            )
+            self.demand.data.loc[:, "demand"] = demand_array
         
         reservoir_cap = reservoir_cap if reservoir_cap is not None else self.config["reservoir_cap"]
         
         ## Initialize numpy arrays
         net_precip = np.array(self.forcing.data["precip"] - self.forcing.data["pet"])
-
         reservoir_stor = np.zeros(len(net_precip))
         reservoir_overflow = np.zeros(len(net_precip))
         deficit = np.zeros(len(net_precip))
@@ -134,14 +144,11 @@ class Model(object):
         
         # Fill reservoir arrays
         for i in range(1, len(net_precip)):
-            #reservoir_stor[i] = min(max(0, reservoir_stor[i-1] + runoff[i] - demand[i]), reservoir_cap) #TODO: remove
-            #reservoir_overflow[i] =  max(0, reservoir_stor[i-1] + runoff[i] - demand[i] - reservoir_cap) #TODO: remove
-            #deficit[i] = max(0, demand[i] - reservoir_stor[i]) #TODO: remove
             self.reservoir.update_state(runoff = runoff[i], demand = demand_array[i])
             reservoir_stor[i] = self.reservoir.reservoir_stor
             reservoir_overflow[i] = self.reservoir.reservoir_overflow
             deficit[i] = self.reservoir.deficit
-            # Calculating days that reservoir does not suffice
+            # Tracking the timesteps for which the reservoir does not suffice.
             if reservoir_stor[i] >= demand_array[i]:
                 dry_days[i] = 0
             elif reservoir_stor[i] < demand_array[i]:
@@ -158,6 +165,14 @@ class Model(object):
             'deficit': deficit,
             'consec_dry_days': consec_dry_days}
         df = pd.DataFrame(df_data, index = self.forcing.data['precip'].index)
+        
+        # Convert back to desired units
+        if self.unit == "m3":
+            df = convert_mm_to_m3(df = df, col = "reservoir_stor", surface_area = self.config["srf_area"])
+            df = convert_mm_to_m3(df = df, col = "reservoir_overflow", surface_area = self.config["srf_area"])
+            df = convert_mm_to_m3(df = df, col = "deficit", surface_area = self.config["srf_area"])
+            self.demand.data = convert_mm_to_m3(df = self.demand.data, col = "demand", surface_area = self.config["srf_area"])
+        # Save results
         if save==True:
             df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={reservoir_cap}_yr_demand={self.demand.yearly_demand}.csv")
         self.results = df
@@ -379,6 +394,7 @@ class Model(object):
                 name = self.name,
                 run_fn = fn,
                 demand_fn = self.demand.data,
+                unit = self.unit,
                 t_start = t_start,
                 t_end = t_end,
                 reservoir_cap = self.reservoir.reservoir_cap,
@@ -386,6 +402,10 @@ class Model(object):
             )
         
         if plot_type in ["system_curve", "saving_curve"]:
+            if not hasattr(self, 'statistics'):
+                raise ValueError(
+                    f"Perform batch run or load in previous batch run results to plot {plot_type}."
+                )
             if fn:
                 fn = pd.read_csv(fn, sep=',')
             else:

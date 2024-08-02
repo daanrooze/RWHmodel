@@ -129,9 +129,9 @@ class Demand(TimeSeries):
             fn=demand_fn, root=root, timestep=timestep, t_start=t_start, t_end=t_end
         )
         if isinstance(demand_fn, (int, float)):
-            forcing_fn["demand"] = demand_fn
+            forcing_fn["demand"] = float(demand_fn)
             self.data = forcing_fn[["demand"]]
-            self.fn = int
+            self.fn = float
             self.num_years = (max(forcing_fn.index) - min(forcing_fn.index)) / (np.timedelta64(1, "W") * 52)
             self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
         else:
@@ -162,15 +162,17 @@ class Demand(TimeSeries):
             yearly_demand,  
             perc_constant,
             shift,
+            t_start,
+            t_end
         ):
         # insert function with sinus to implement seasonal variation.
         yearly_demand_constant = perc_constant*yearly_demand
-        start_day_of_year = self.t_start.day_of_year-1
+        start_day_of_year = t_start.day_of_year-1
         # transform yearly demand into daily demand.
         daily_demand_constant = yearly_demand_constant / 365
         A = -(((2*np.pi)/365) * (365 * daily_demand_constant - yearly_demand)) / (- np.cos(shift + 365 * ((2*np.pi)/365)) + np.cos(shift) + 365 * ((2*np.pi)/365))
         daily_demand_array = []
-        for t in np.arange(start_day_of_year,start_day_of_year+(self.t_end - self.t_start).days): 
+        for t in np.arange(start_day_of_year,start_day_of_year+(t_end - t_start).days): 
             daily_tot = A * np.sin(((2*np.pi)/365)*t+shift) + daily_demand_constant + A
             daily_demand_array.append(daily_tot)
         demand_array = daily_demand_array

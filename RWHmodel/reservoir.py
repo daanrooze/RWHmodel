@@ -21,7 +21,7 @@ class Reservoir():
             self.deficit = demand - reservoir_stor
             self.reservoir_overflow = 0
         elif reservoir_stor <= 0:
-            self.deficit = 4
+            self.deficit = demand
             reservoir_stor = 0.0
             self.reservoir_overflow = 0
         self.reservoir_stor = reservoir_stor

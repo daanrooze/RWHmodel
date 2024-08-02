@@ -40,7 +40,7 @@ def plot_meteo(
     ax2 = ax1.twinx()
     
     # Drawing lines and filled area
-    ax2.plot(df.index, df['precip'], linewidth=2, linestyle='-',
+    ax2.plot(df.index, df['precip'], linewidth=1, linestyle='-',
              label = 'Precipitation', color='#080c80') 
     ax1.fill_between(df.index, y1=df['pet'], y2=0, label = 'Potential Evapotranspiration' , color='#c6c6c6')
     
@@ -78,6 +78,7 @@ def plot_run(
         name,
         run_fn, # Path to run output file
         demand_fn,
+        unit,
         t_start,
         t_end,
         reservoir_cap,
@@ -87,24 +88,30 @@ def plot_run(
     df_demand = demand_fn
     # Create plot
     fig, ax1 = plt.subplots(1, figsize=(14,6))
+    ax2 = ax1.twinx()
     
     # Drawing lines and filled area
-    ax1.plot(df.index, df['reservoir_stor'], linewidth=2, linestyle='-',
-             label = 'Reservoir storage', color='#080c80') 
-    ax1.plot(df.index, df['reservoir_overflow'], linewidth=2, linestyle='-',
+    ax2.plot(df.index, df['reservoir_overflow'], linewidth=1, linestyle='-',
              label = 'Reservoir overflow', color='#00b389')
-    ax1.plot(df.index, df['deficit'], linewidth=2, linestyle='-',
-             label = 'Deficit', color='#ff960d')
-    ax1.plot(df_demand.index, df_demand['demand'], linewidth=2, linestyle='-',
-             label = 'Demand', color='black')
+    ax2.plot(df.index, df['reservoir_stor'], linewidth=1, linestyle='-',
+             label = 'Reservoir storage', color='#080c80') 
+    ax1.fill_between(df.index, y1=df['deficit'], y2=0, label = 'Deficit' , color='#be1e2d', alpha=0.35)
+    #ax1.plot(df.index, df['deficit'], linewidth=1, linestyle='-',
+    #         label = 'Deficit', color='#be1e2d', alpha=0.5)
+    ax1.plot(df_demand.index, df_demand['demand'], linewidth=1, linestyle='-',
+             label = 'Demand', color='#ff960d')
     
     # Axes labels
-    ax1.set_ylabel('Storage/overflow/deficit [mm]')
+    ax1.set_ylabel(f'Demand and deficit [{unit}]')
     ax1.set_xlabel('Date')
+    ax2.set_ylabel(f'Storage and overflow [{unit}]')
     
     # Axes limits
-    y_max = np.round(df['reservoir_stor'].max(), -1) + 10
-    ax1.set_ylim([0, y_max])
+    y_max_ax1 = np.round(df['reservoir_stor'].max(), -1) + 10
+    y_max_ax2 = np.round(df_demand['demand'].max(), 0) + 1
+    ax2.set_ylim([0, y_max_ax1])
+    ax2.set_xlim([t_start, t_end])
+    ax1.set_ylim([0, y_max_ax2])
     ax1.set_xlim([t_start, t_end])
     
     # Layout and grid
@@ -113,7 +120,7 @@ def plot_run(
     plt.grid(visible=True, which="minor", color="black", linestyle="-", alpha=0.1)
     
     # Legend
-    fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05)) #TODO: maybe different layout for legend?
+    fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr_demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
