@@ -38,6 +38,40 @@ def return_period(
     return req_storage
 
 
+def return_period(
+        df,
+        T_return_list = [1,2,5,10,20,50,100]
+    ):
+    colnames = df.columns[:-1]
+    df_vars = pd.DataFrame(columns=["q", "a", "b"], dtype='float64')
+    df_vars["q"] = np.zeros(len(df.keys()[:-1]))
+ 
+    for i, col in enumerate(colnames):
+        mcl = df[col].count()
+        x = (
+            df["T_return"][0:mcl]
+            .reindex(df["T_return"][0:mcl].index[::-1])
+            .reset_index(drop=True)
+        ).astype('float64')
+        y = df[col][0:mcl].reindex(df[col][0:mcl].index[::-1]).reset_index(drop=True).astype('float64')
+        a, b = np.polyfit(np.log(x)[0:mcl], y[0:mcl], 1)
+ 
+        df_vars.loc[i] = [float(i), float(a), float(b)]
+ 
+    # Calculate required storage capacity for a set of return periods
+    req_storage = pd.DataFrame()
+    req_storage["Treturn"] = T_return_list
+    new_columns = {}  # CHANGE
+    for i, key in enumerate(df_vars["q"]):  # CHANGE
+        new_columns[key] = func_log(df_vars["a"][i], df_vars["b"][i], req_storage["Treturn"])  # CHANGE
+    new_columns_df = pd.DataFrame(new_columns)  # CHANGE
+    req_storage = pd.concat([req_storage, new_columns_df], axis=1)  # CHANGE
+    req_storage = req_storage.set_index("Treturn")
+    req_storage.index.name = None
+    req_storage = req_storage.T
+    return req_storage
+
+
 def func_fitting(
         system_fn, # Path to saved system file
         T_return_list = [1,2,5,10,20,50,100]

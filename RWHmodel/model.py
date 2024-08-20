@@ -21,7 +21,7 @@ class Model(object):
         name: str,
         setup_fn: str,
         forcing_fn: str,
-        demand_fn: str,
+        demand_fn: Optional[str] = None,
         reservoir_initial_state: float = 0,
         timestep: Optional[int] = None,
         t_start: Optional[str] = None,
@@ -64,23 +64,24 @@ class Model(object):
             t_end = t_end
         )
         
-        # Setup demand
-        self.demand = Demand(
-            root = root,
-            demand_fn = demand_fn,
-            forcing_fn = self.forcing.data,
-            timestep = timestep,
-            t_start = t_start,
-            t_end = t_end,
-            unit = unit,
-            setup_fn = self.config
-        )
+        # Setup demand if given (not needed for batch runs) #TODO implement function that demand range can be given as [min, max] and argument step size (default = 1000)
+        if demand_fn:
+            self.demand = Demand(
+                root = root,
+                demand_fn = demand_fn,
+                forcing_fn = self.forcing.data,
+                timestep = timestep,
+                t_start = t_start,
+                t_end = t_end,
+                unit = unit,
+                setup_fn = self.config
+            )
 
-        if self.forcing.timestep != self.demand.timestep:
-            raise ValueError("Forcing and demand timeseries have different timesteps. Change input files or resample by specifying timestep.")
-        if len(self.forcing.data) != len(self.demand.data):
-            raise ValueError(f"Forcing and demand timeseries have different starting and/or end dates. Forcing timeseries runs from {self.forcing.t_start} to {self.forcing.t_end}, while demand timeseries runs from {self.demand.t_start} to {self.demand.t_end}. Change input files or clip timeseries by specifying interval.")
-        
+            if self.forcing.timestep != self.demand.timestep:
+                raise ValueError("Forcing and demand timeseries have different timesteps. Change input files or resample by specifying timestep.")
+            if len(self.forcing.data) != len(self.demand.data):
+                raise ValueError(f"Forcing and demand timeseries have different starting and/or end dates. Forcing timeseries runs from {self.forcing.t_start} to {self.forcing.t_end}, while demand timeseries runs from {self.demand.t_start} to {self.demand.t_end}. Change input files or clip timeseries by specifying interval.")
+            
         # Initiate hydro_model
         self.hydro_model = HydroModel(int_cap = self.config['int_cap'])
         
@@ -107,7 +108,7 @@ class Model(object):
             reservoir_cap: Optional = None,
             save=True,
         ):
-        # Overwrite self with arguments if given.
+        # Overwrite data in self with arguments if given.
         demand_array = np.full(len(self.forcing.data["precip"]), demand) if demand is not None else np.array(self.demand.data["demand"])
         # Implement seasonal variation transformation if given.
         if type(self.demand.fn)==str and seasonal_variation==True:
@@ -119,7 +120,7 @@ class Model(object):
                 yearly_demand = demand_array[0] * 365
             else:
                 yearly_demand = demand_array[0] * 24 * 365
-            
+
             demand_array = self.demand.seasonal_variation(
                 yearly_demand = yearly_demand,
                 perc_constant = self.config["perc_constant"],
@@ -128,6 +129,8 @@ class Model(object):
                 t_end = self.forcing.t_end
             )
             self.demand.data.loc[:, "demand"] = demand_array
+        else:
+            yearly_demand = self.demand.yearly_demand
         
         reservoir_cap = reservoir_cap if reservoir_cap is not None else self.config["reservoir_cap"]
         
@@ -174,7 +177,7 @@ class Model(object):
             self.demand.data = convert_mm_to_m3(df = self.demand.data, col = "demand", surface_area = self.config["srf_area"])
         # Save results
         if save==True:
-            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={reservoir_cap}_yr_demand={self.demand.yearly_demand}.csv")
+            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={reservoir_cap}_yr_demand={yearly_demand}.csv")
         self.results = df
         return df
 
@@ -301,15 +304,17 @@ class Model(object):
         for reservoir_cap in capacity_lst:
             
             df_total = pd.DataFrame()
-            dry_events = pd.DataFrame()
-            req_storage = pd.DataFrame()
+            #dry_events = pd.DataFrame()
+            #req_storage = pd.DataFrame()
             
             for demand in demand_lst:
                 if log:
-                    print(f"Running with reservoir capacity {np.round(reservoir_cap, 1)} mm and demand {np.round(demand, 1)}.")
+                    print(f"Running with reservoir capacity {np.round(reservoir_cap, 1)} mm and demand {np.round(demand, 1)} mm/{self.forcing.timestep} sec.")
                 
+                #self.demand.yearly_demand = np.round(float((self.data["demand"].sum())/self.num_years),1)#TODO remove
                 run_df = self.run(demand=demand, reservoir_cap=reservoir_cap, save=save, seasonal_variation=seasonal_variation)
                 
+                dry_events = pd.DataFrame()
                 if method == "consecutive_days": 
                     dry_events = run_df["consec_dry_days"].sort_values(ascending=False).to_frame()
                     dry_events = dry_events.reset_index(drop=True)
@@ -321,6 +326,7 @@ class Model(object):
                     dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
                     
                 df_total = pd.concat([df_total, dry_events[[f'{demand}']]], axis=1)
+                #print(df_total) #TODO remove 
             
             df_total['T_return'] = self.forcing.num_years / (df_total.index + 1)
             req_storage = return_period(df_total, self.config["T_return_list"])
