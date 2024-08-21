@@ -184,7 +184,8 @@ class Demand(TimeSeries):
         demand_array = daily_demand_array
         return demand_array
 
-
+#TODO: remove below
+"""
 class ConstantDemand:
     def __init__(
         self,
@@ -196,4 +197,4 @@ class ConstantDemand:
         self.data = forcing_fn[["demand"]]
         self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
 
-
+"""

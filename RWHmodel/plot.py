@@ -67,7 +67,7 @@ def plot_meteo(
     plt.grid(visible=True, which="minor", color="black", linestyle="-", alpha=0.1)
     
     # Legend
-    fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=2) #TODO: maybe different layout for legend?
+    fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=2)
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_forcing_{plot_name}_{t_start.year}_{t_start.month}-{t_end.year}_{t_end.month}.png", dpi=300, bbox_inches='tight')

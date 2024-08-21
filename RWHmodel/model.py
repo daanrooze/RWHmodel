@@ -6,7 +6,7 @@ import codecs
 import toml
 
 from RWHmodel.reservoir import Reservoir
-from RWHmodel.timeseries import ConstantDemand, Demand, Forcing
+from RWHmodel.timeseries import Demand, Forcing
 from RWHmodel.hydro_model import HydroModel
 from RWHmodel.utils import makedir, check_variables, convert_mm_to_m3
 from RWHmodel.analysis import return_period
@@ -276,12 +276,12 @@ class Model(object):
             # Append this DataFrame to df_system
             df_system = pd.concat([df_system, opt_demand_df], ignore_index=True)
     
-        #df_system = df_system.set_index("reservoir_size") #TODO
         # Move 'reservoir_size' column to the front
         df_system = df_system[ ['reservoir_size'] + [ col for col in df_system.columns if col != 'reservoir_size' ] ]
         df_system.columns = df_system.columns.astype(str)
+        
         self.statistics = df_system
-        df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv")
+        df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv", index=False)
 
     
     def plot(
@@ -339,8 +339,6 @@ class Model(object):
                 fn = pd.read_csv(fn, sep=',')
             else:
                 fn = self.statistics
-                #fn = fn.reset_index(drop=False)
-                #fn.columns = fn.columns.astype(str)#TODO
             
             if T_return_list is None:
                    T_return_list = self.config['T_return_list']
