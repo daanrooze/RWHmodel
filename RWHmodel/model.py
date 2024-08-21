@@ -22,6 +22,7 @@ class Model(object):
         setup_fn: str,
         forcing_fn: str,
         demand_fn: Optional[str] = None,
+        reservoir_range: Optional[list] = None,
         reservoir_initial_state: float = 0,
         timestep: Optional[int] = None,
         t_start: Optional[str] = None,
@@ -64,26 +65,42 @@ class Model(object):
             t_end = t_end
         )
         
-        # Setup demand if given (not needed for batch runs) #TODO implement function that demand range can be given as [min, max] and argument step size (default = 1000)
-        if demand_fn:
-            self.demand = Demand(
-                root = root,
-                demand_fn = demand_fn,
-                forcing_fn = self.forcing.data,
-                timestep = timestep,
-                t_start = t_start,
-                t_end = t_end,
-                unit = unit,
-                setup_fn = self.config
-            )
+        # Setup demand if given
+        if type(demand_fn)==list:
+            self.config["dem_min"] = demand_fn[0]
+            self.config["dem_max"] = demand_fn[1]
+            if len(demand_fn) == 3:
+                self.config["dem_step"] = demand_fn[2]
+            else:
+                self.config["dem_step"] = 100  # Default step size=100
 
-            if self.forcing.timestep != self.demand.timestep:
-                raise ValueError("Forcing and demand timeseries have different timesteps. Change input files or resample by specifying timestep.")
-            if len(self.forcing.data) != len(self.demand.data):
-                raise ValueError(f"Forcing and demand timeseries have different starting and/or end dates. Forcing timeseries runs from {self.forcing.t_start} to {self.forcing.t_end}, while demand timeseries runs from {self.demand.t_start} to {self.demand.t_end}. Change input files or clip timeseries by specifying interval.")
-            
+        self.demand = Demand(
+            root = root,
+            demand_fn = demand_fn,
+            forcing_fn = self.forcing.data,
+            timestep = timestep,
+            t_start = t_start,
+            t_end = t_end,
+            unit = unit,
+            setup_fn = self.config
+        )
+
+        if self.forcing.timestep != self.demand.timestep:
+            raise ValueError("Forcing and demand timeseries have different timesteps. Change input files or resample by specifying timestep.")
+        if len(self.forcing.data) != len(self.demand.data):
+            raise ValueError(f"Forcing and demand timeseries have different starting and/or end dates. Forcing timeseries runs from {self.forcing.t_start} to {self.forcing.t_end}, while demand timeseries runs from {self.demand.t_start} to {self.demand.t_end}. Change input files or clip timeseries by specifying interval.")
+        
         # Initiate hydro_model
         self.hydro_model = HydroModel(int_cap = self.config['int_cap'])
+        
+        # Generate reservoir range if given
+        if reservoir_range:
+            self.config["cap_min"] = reservoir_range[0]
+            self.config["cap_max"] = reservoir_range[1]
+            if len(reservoir_range) == 3:
+                self.config["cap_step"] = reservoir_range[2]
+            else:
+                self.config["cap_step"] = 100  # Default step size=100
         
         # Set reservoir capacity
         if not 'reservoir_cap' in self.config:
@@ -115,12 +132,13 @@ class Model(object):
             raise ValueError(
                 "Cannot transpose timeseries with seasonal variation."
             )
+        
+        if self.demand.timestep == 86400:
+            yearly_demand = demand_array[0] * 365
+        else:
+            yearly_demand = demand_array[0] * 24 * 365
+        
         if seasonal_variation:
-            if self.demand.timestep == 86400:
-                yearly_demand = demand_array[0] * 365
-            else:
-                yearly_demand = demand_array[0] * 24 * 365
-
             demand_array = self.demand.seasonal_variation(
                 yearly_demand = yearly_demand,
                 perc_constant = self.config["perc_constant"],
@@ -129,10 +147,8 @@ class Model(object):
                 t_end = self.forcing.t_end
             )
             self.demand.data.loc[:, "demand"] = demand_array
-        else:
-            yearly_demand = self.demand.yearly_demand
         
-        reservoir_cap = reservoir_cap if reservoir_cap is not None else self.config["reservoir_cap"]
+        self.reservoir.reservoir_cap = reservoir_cap if reservoir_cap is not None else self.config["reservoir_cap"]
         
         ## Initialize numpy arrays
         net_precip = np.array(self.forcing.data["precip"] - self.forcing.data["pet"])
@@ -177,95 +193,11 @@ class Model(object):
             self.demand.data = convert_mm_to_m3(df = self.demand.data, col = "demand", surface_area = self.config["srf_area"])
         # Save results
         if save==True:
-            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={reservoir_cap}_yr_demand={yearly_demand}.csv")
+            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={np.round(reservoir_cap,1)}_yr_demand={np.round(yearly_demand,1)}.csv")
         self.results = df
         return df
 
-    """ chat gpt versie:
-    def batch_run(
-            self,
-            method,
-            seasonal_variation=False,
-            log=False,
-            save=False
-        ):
-        # Batch run function to obtain solution space and statistics on output.
-        self.mode = 'batch'
-        check_variables(self.mode, self.config, seasonal_variation)
-        # Check if input is correct
-        methods = ["total_days", "consecutive_days"]
-        if method not in methods:
-            raise ValueError(
-                f"Provide valid method from {methods}."
-            )
-        if self.unit != "mm" and len(self.config["typologies_name"]) > 1:
-            raise ValueError(
-                "Ambiguous surface area. Unit conversion can only be used for a maxmimum of one surface area."
-            )
-        
-        # Define parameters
-        dem_min = self.config["dem_min"]
-        dem_max = self.config["dem_max"]
-        dem_step = self.config["dem_step"]
-        demand_lst = list(np.arange(dem_min, dem_max, dem_step))
-        # Create reservoir range
-        cap_min = self.config["cap_min"]
-        cap_max = self.config["cap_max"]
-        cap_step = self.config["cap_step"]
-        capacity_lst = list(np.arange(cap_min, cap_max, cap_step))
-        
-        max_num_days = self.config["max_num_days"]
 
-        df_system = pd.DataFrame(columns = self.config["T_return_list"]) 
-        for reservoir_cap in capacity_lst:
-            
-            df_total = pd.DataFrame()
-            dry_events = pd.DataFrame()
-            req_storage = pd.DataFrame()
-            opt_demand_df = pd.DataFrame()
-            for demand in demand_lst:
-                if log:
-                    print(f"Running with reservoir capacity {np.round(reservoir_cap,1)} mm and demand {np.round(demand,1)}.")
-                
-                run_df = self.run(demand = demand, reservoir_cap = reservoir_cap, save = save, seasonal_variation = seasonal_variation)
-                
-                if method == "consecutive_days": 
-                    dry_events = run_df["consec_dry_days"].sort_values(ascending = False).to_frame()
-                    dry_events = dry_events.reset_index(drop = True)
-                    dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
-                if method == "total_days": 
-                    run_df_yearly = run_df.resample('YE').sum()
-                    dry_events = run_df_yearly["consec_dry_days"].sort_values(ascending = False).to_frame()
-                    dry_events = dry_events.reset_index(drop = True)
-                    dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
-                df_total = pd.concat([df_total, dry_events[[f'{demand}']]], axis=1)
-            df_total['T_return'] = self.forcing.num_years / (df_total.index + 1)
-            req_storage = return_period(df_total, self.config["T_return_list"])
-            print("req_storage", req_storage) #TODO: remove later
-            # Find optimal demand for specific reservoir size
-            opt_demand_lst = []
-            for column in req_storage.columns:
-                try:
-                    # Filter rows where the value in the column is less than or equal to max_num_days
-                    boundary_condition = req_storage[req_storage[column] <= max_num_days].index
-                    # Check if there are any indices that meet the condition
-                    if not boundary_condition.empty:
-                        # Get the last index from the filtered results
-                        opt_demand = int(boundary_condition[-1])
-                        opt_demand_lst.append(demand_lst[opt_demand])
-                    else:
-                        # Append 0 if no valid index was found
-                        opt_demand_lst.append(0)
-                except Exception:
-                    opt_demand_lst.append(0)
-            opt_demand_df = pd.DataFrame([opt_demand_lst], columns = self.config["T_return_list"])
-            df_system = pd.concat([df_system, opt_demand_df], ignore_index=True)
-        df_system["reservoir_size"] = capacity_lst
-        #df_system = df_system.set_index("reservoir_size")
-        self.statistics = df_system
-        df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv")
-    """
-    
     def batch_run(
         self,
         method,
@@ -286,15 +218,9 @@ class Model(object):
             )
     
         # Define parameters
-        dem_min = self.config["dem_min"]
-        dem_max = self.config["dem_max"]
-        dem_step = self.config["dem_step"]
-        demand_lst = list(np.arange(dem_min, dem_max, dem_step))
+        demand_lst = list(np.linspace(self.config["dem_min"], self.config["dem_max"], self.config["dem_step"]))
         # Create reservoir range
-        cap_min = self.config["cap_min"]
-        cap_max = self.config["cap_max"]
-        cap_step = self.config["cap_step"]
-        capacity_lst = list(np.arange(cap_min, cap_max, cap_step))
+        capacity_lst = list(np.linspace(self.config["cap_min"], self.config["cap_max"], self.config["cap_step"]))
         
         max_num_days = self.config["max_num_days"]
     
@@ -304,14 +230,12 @@ class Model(object):
         for reservoir_cap in capacity_lst:
             
             df_total = pd.DataFrame()
-            #dry_events = pd.DataFrame()
-            #req_storage = pd.DataFrame()
+            req_storage = pd.DataFrame()
             
             for demand in demand_lst:
                 if log:
                     print(f"Running with reservoir capacity {np.round(reservoir_cap, 1)} mm and demand {np.round(demand, 1)} mm/{self.forcing.timestep} sec.")
                 
-                #self.demand.yearly_demand = np.round(float((self.data["demand"].sum())/self.num_years),1)#TODO remove
                 run_df = self.run(demand=demand, reservoir_cap=reservoir_cap, save=save, seasonal_variation=seasonal_variation)
                 
                 dry_events = pd.DataFrame()
@@ -326,11 +250,9 @@ class Model(object):
                     dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
                     
                 df_total = pd.concat([df_total, dry_events[[f'{demand}']]], axis=1)
-                #print(df_total) #TODO remove 
             
             df_total['T_return'] = self.forcing.num_years / (df_total.index + 1)
             req_storage = return_period(df_total, self.config["T_return_list"])
-            print("req_storage", req_storage)  # TODO: remove later
             
             # Find optimal demand for specific reservoir size
             opt_demand_lst = []
@@ -343,10 +265,8 @@ class Model(object):
                         # Get the last index from the filtered results
                         opt_demand = int(boundary_condition[-1])
                         opt_demand_lst.append(demand_lst[opt_demand])
-                    else:
-                        # Append 0 if no valid index was found
-                        opt_demand_lst.append(0)
                 except Exception:
+                    # Append 0 if no valid index was found
                     opt_demand_lst.append(0)
             
             # Create a DataFrame for the current reservoir size's results
@@ -356,8 +276,7 @@ class Model(object):
             # Append this DataFrame to df_system
             df_system = pd.concat([df_system, opt_demand_df], ignore_index=True)
     
-        # Optionally set the index to reservoir_size, if needed
-        # df_system = df_system.set_index("reservoir_size")
+        df_system = df_system.set_index("reservoir_size")
         self.statistics = df_system
         df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv")
 
@@ -367,6 +286,7 @@ class Model(object):
         plot_type=None,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
+        timestep: Optional[int] = None,
         fn: Optional[str] = None,
         T_return_list: Optional[[int]] = None,
         **kwargs
@@ -408,7 +328,7 @@ class Model(object):
             )
         
         if plot_type in ["system_curve", "saving_curve"]:
-            if not hasattr(self, 'statistics'):
+            if not hasattr(self, 'statistics') and not fn:
                 raise ValueError(
                     f"Perform batch run or load in previous batch run results to plot {plot_type}."
                 )
@@ -420,12 +340,15 @@ class Model(object):
             if T_return_list is None:
                    T_return_list = self.config['T_return_list']
         
+            if not timestep:
+                timestep = self.demand.timestep
         if plot_type == "system_curve":
             plot_system_curve(
                 root = self.root,
                 name = self.name,
                 system_fn = fn,
                 max_num_days = self.config['max_num_days'],
+                timestep = timestep,
                 T_return_list = T_return_list,
                 validation = False
             )

@@ -131,7 +131,8 @@ def plot_system_curve(
         root,
         name,
         system_fn,
-        max_num_days, # The maximum number of total OR consecutive days
+        max_num_days, # The maximum number of total OR consecutive days,
+        timestep,
         T_return_list = [1,2,5,10],
         validation = False
     ):    
@@ -146,28 +147,37 @@ def plot_system_curve(
     df_vars = func_fitting(system_fn, T_return_list)
     
     # Define maximum specific water demand (x-axis bounds)
-    x_max = np.max(system_fn)/2
+    x_max = np.max(system_fn)
     x_range = np.arange(0.01,x_max,1).astype('float64')
-    
-    # Define maximum reservoir_sizes (y-axis bounds)
-    y_max = np.round(np.max(df_vars),0)
     
     # Create plot
     fig, ax = plt.subplots(1, figsize=(8,6))
-    plt.axis([0, x_max, 0, y_max])
     
+    # Plot system behavior curves and collect y-values
+    y_values = []
     for i, col in enumerate(T_return_list):
         # Plot system behavior curves
-        #plt.plot(x_range, func_system_curve(x_range, df_vars["a"][col], df_vars["b"][col], df_vars["n"][col]),
-        #         label=f'T{col}', color=cmap[i])
-        plt.plot(x_range, func_system_curve(x_range, df_vars.loc[str(col),"a"], df_vars.loc[str(col), "b"], df_vars.loc[str(col), "n"]),
-                 label=f'T{col}', color=cmap[i])
+        y_data = func_system_curve(x_range, df_vars.loc[str(col),"a"], df_vars.loc[str(col), "b"], df_vars.loc[str(col), "n"])
+        plt.plot(x_range, y_data, label=f'T{col}', color=cmap[i])
+        y_values.extend(y_data)  # Collect all y-values
+        
         if validation:
             plt.scatter(system_fn['tank_size'], system_fn[str(col)], label=f'Raw data T{col}', color=cmap[i], alpha=0.4, s=75, marker='x')
     
+    y_max = np.round(np.max(y_values), 0)
+    plt.axis([0, x_max, 0, y_max])  # Set axis limits
+    
+    # Obtain colloquial timestep for x-axis
+    if timestep >= 365 * 24 * 3600:
+        timestep_txt = 'year'
+    elif timestep >= 24 * 3600:
+        timestep_txt = 'day'
+    elif timestep >= 3600:
+        timestep_txt = 'hour'
+    
     # Axes labels
     ax.set_xlabel('Specific reservoir capacity [mm]')
-    ax.set_ylabel('Specific water demand [mm/year]')
+    ax.set_ylabel(f'Specific water demand [mm/{timestep_txt}]')
     
     # Layout and grid
     ax.spines.right.set_visible(False)

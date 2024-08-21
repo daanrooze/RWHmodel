@@ -129,18 +129,24 @@ class Demand(TimeSeries):
             fn=demand_fn, root=root, timestep=timestep, t_start=t_start, t_end=t_end
         )
         if isinstance(demand_fn, (int, float)):
-            forcing_fn["demand"] = float(demand_fn)
+            forcing_fn["demand"] = float(demand_fn) # Use forcing timeseries to fill demand timeseries
             self.data = forcing_fn[["demand"]]
             self.fn = float
             self.num_years = (max(forcing_fn.index) - min(forcing_fn.index)) / (np.timedelta64(1, "W") * 52)
             self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
-        else:
+        if isinstance(demand_fn, str):
             self.data = self.read_timeseries(
                 file_type="csv",
                 required_headers=["datetime", "demand"],
                 numeric_cols=["demand"],
                 timestep=timestep,
             )
+        if isinstance(demand_fn, list):
+            self.data = forcing_fn["demand"] = float(demand_fn[0]) # Use forcing timeseries to fill demand timeseries
+            self.data = forcing_fn[["demand"]]
+            self.fn = list
+            self.num_years = (max(forcing_fn.index) - min(forcing_fn.index)) / (np.timedelta64(1, "W") * 52)
+            self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
 
         self.unit = unit
         if unit == "m3":  # Convert to mm
