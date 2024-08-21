@@ -162,7 +162,7 @@ def plot_system_curve(
         y_values.extend(y_data)  # Collect all y-values
         
         if validation:
-            plt.scatter(system_fn['tank_size'], system_fn[str(col)], label=f'Raw data T{col}', color=cmap[i], alpha=0.4, s=75, marker='x')
+            plt.scatter(system_fn['reservoir_size'], system_fn[str(col)], label=f'Raw data T{col}', color=cmap[i], alpha=0.4, s=75, marker='x')
     
     y_max = np.round(np.max(y_values), 0)
     plt.axis([0, x_max, 0, y_max])  # Set axis limits
