@@ -67,6 +67,8 @@ class Model(object):
         
         # Setup demand if given
         if type(demand_fn)==list:
+            if demand_fn[1] > reservoir_range[0]:
+                raise ValueError("Maximum demand is greater than the reservoir capacity")
             self.config["dem_min"] = demand_fn[0]
             self.config["dem_max"] = demand_fn[1]
             if len(demand_fn) == 3:
@@ -224,8 +226,15 @@ class Model(object):
         
         max_num_days = self.config["max_num_days"]
     
-        # Initialize df_system outside the loop
-        df_system = pd.DataFrame(columns=self.config["T_return_list"]) 
+        # Initialize df_system outside the loop #TODO check
+        df_system = pd.DataFrame(columns=self.config["T_return_list"] + ['reservoir_cap'])
+        
+        #columns = ['reservoir_size'] + [str(i) for i in self.config["T_return_list"]]
+        #print(columns)
+        # Create the DataFrame with the columns
+        #df_system = pd.DataFrame(columns=columns)
+        #columns = ['reservoir_size'] + [str(i) for i in self.config["T_return_list"]]
+        #print(df_system)
     
         for reservoir_cap in capacity_lst:
             
@@ -236,15 +245,15 @@ class Model(object):
                 if log:
                     print(f"Running with reservoir capacity {np.round(reservoir_cap, 1)} mm and demand {np.round(demand, 1)} mm/{self.forcing.timestep} sec.")
                 
-                run_df = self.run(demand=demand, reservoir_cap=reservoir_cap, save=save, seasonal_variation=seasonal_variation)
+                df_run = self.run(demand=demand, reservoir_cap=reservoir_cap, save=save, seasonal_variation=seasonal_variation)
                 
                 dry_events = pd.DataFrame()
                 if method == "consecutive_days": 
-                    dry_events = run_df["consec_dry_days"].sort_values(ascending=False).to_frame()
+                    dry_events = df_run["consec_dry_days"].sort_values(ascending=False).to_frame()
                     dry_events = dry_events.reset_index(drop=True)
                     dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
                 if method == "total_days": 
-                    run_df_yearly = run_df.resample('YE').sum()
+                    run_df_yearly = df_run.resample('YE').sum()
                     dry_events = run_df_yearly["consec_dry_days"].sort_values(ascending=False).to_frame()
                     dry_events = dry_events.reset_index(drop=True)
                     dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
@@ -272,12 +281,12 @@ class Model(object):
             # Create a DataFrame for the current reservoir size's results
             opt_demand_df = pd.DataFrame([opt_demand_lst], columns=self.config["T_return_list"])
             # Add the reservoir size as a new column to this DataFrame
-            opt_demand_df["reservoir_size"] = reservoir_cap
+            opt_demand_df["reservoir_cap"] = reservoir_cap
             # Append this DataFrame to df_system
             df_system = pd.concat([df_system, opt_demand_df], ignore_index=True)
     
         # Move 'reservoir_size' column to the front
-        df_system = df_system[ ['reservoir_size'] + [ col for col in df_system.columns if col != 'reservoir_size' ] ]
+        df_system = df_system[ ['reservoir_cap'] + [ col for col in df_system.columns if col != 'reservoir_cap' ] ]
         df_system.columns = df_system.columns.astype(str)
         
         self.statistics = df_system
@@ -292,6 +301,8 @@ class Model(object):
         timestep: Optional[int] = None,
         fn: Optional[str] = None,
         T_return_list: Optional[[int]] = None,
+        validation: Optional[str] = None,
+        reservoir_max: Optional[int] = None,
         **kwargs
     ):
         plot_types = ["meteo", "run", "system_curve", "saving_curve"]
@@ -353,7 +364,7 @@ class Model(object):
                 max_num_days = self.config['max_num_days'],
                 timestep = timestep,
                 T_return_list = T_return_list,
-                validation = False
+                validation = validation
             )
         
         if plot_type == "saving_curve":
@@ -366,5 +377,6 @@ class Model(object):
                 typologies_demand = self.config['typologies_demand'],
                 typologies_area = self.config['typologies_area'],
                 T_return_list = T_return_list,
+                reservoir_max = reservoir_max,
                 ambitions = None
             )

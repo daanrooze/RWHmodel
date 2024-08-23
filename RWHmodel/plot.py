@@ -158,11 +158,11 @@ def plot_system_curve(
     for i, col in enumerate(T_return_list):
         # Plot system behavior curves
         y_data = func_system_curve(x_range, df_vars.loc[str(col),"a"], df_vars.loc[str(col), "b"], df_vars.loc[str(col), "n"])
-        plt.plot(x_range, y_data, label=f'T{col}', color=cmap[i])
+        plt.plot(x_range, y_data, label=f'T{col}', color=cmap[i % len(cmap)])# color=cmap[i]) #TODO check if this works
         y_values.extend(y_data)  # Collect all y-values
         
         if validation:
-            plt.scatter(system_fn['reservoir_size'], system_fn[str(col)], label=f'Raw data T{col}', color=cmap[i], alpha=0.4, s=75, marker='x')
+            plt.scatter(system_fn['reservoir_size'], system_fn[str(col)], label=f'Raw data T{col}', color=cmap[i], alpha=0.4, s=25, marker='x')
     
     y_max = np.round(np.max(y_values), 0)
     plt.axis([0, x_max, 0, y_max])  # Set axis limits
@@ -202,6 +202,7 @@ def plot_saving_curve(
         typologies_demand, # List of typologies and yearly demand, from setup_batch.toml file.
         typologies_area, # List of typologies and surface area, from setup_batch.toml file.
         T_return_list = [1,2,5,10],
+        reservoir_max = None,
         ambitions = None, # List of desired reduction lines (in %)
     ):
     if ambitions and type(ambitions)!=list:
@@ -211,8 +212,13 @@ def plot_saving_curve(
     
     cmap_list = [cmap_g1, cmap_g2, cmap_g3, cmap_g4]
     
+    if reservoir_max:
+        y_max = reservoir_max
+    else:
+        y_max = 20 # Default to maximum reservoir size of 20 m3
+    
     fig, ax = plt.subplots(1, figsize=(8,6))
-    plt.axis([0, 100, 0, 20]) #setting axis boundaries (xmin, xmax, ymin, ymax) #TODO: make variable of axis boundaries?
+    plt.axis([0, 100, 0, y_max]) #setting axis boundaries (xmin, xmax, ymin, ymax) #TODO: make variable of axis boundaries?
     
     # Create plot
     for i, typology in enumerate(typologies_name):
