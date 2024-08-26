@@ -1,5 +1,5 @@
 from RWHmodel.analysis import func_system_curve, func_system_curve_inv, func_fitting
-from RWHmodel.utils import convert_mm_to_m3
+from RWHmodel.utils import convert_mm_to_m3, colloquial_date_text
 
 import numpy as np
 import pandas as pd
@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 
 ### COLOR MAPS
 # Default color map
-cmap = ['#080c80', '#0ebbf0', '#00b389', '#ff960d']
+cmap = ['#080c80', '#0ebbf0', '#00b389', '#ff960d', 
+        '#e63946', '#6a4c93', '#f4a261', '#2a9d8f']
 # Gradient color maps
 cmap_g1 = ['#080c80', '#5f6199', '#9395b9', '#c9cadc']
 cmap_g2 = ['#00b389', '#5bc1a4', '#90d1c0', '#c6e7de']
@@ -96,8 +97,6 @@ def plot_run(
     ax2.plot(df.index, df['reservoir_stor'], linewidth=1, linestyle='-',
              label = 'Reservoir storage', color='#080c80') 
     ax1.fill_between(df.index, y1=df['deficit'], y2=0, label = 'Deficit' , color='#be1e2d', alpha=0.35)
-    #ax1.plot(df.index, df['deficit'], linewidth=1, linestyle='-',
-    #         label = 'Deficit', color='#be1e2d', alpha=0.5)
     ax1.plot(df_demand.index, df_demand['demand'], linewidth=1, linestyle='-',
              label = 'Demand', color='#ff960d')
     
@@ -136,9 +135,6 @@ def plot_system_curve(
         T_return_list = [1,2,5,10],
         validation = False
     ):    
-    if len(T_return_list) > 4:
-        raise ValueError("Provide maximum of 4 return period for plotting")
-    
     if validation:
         plot_name = "validation_"
     else:
@@ -162,18 +158,13 @@ def plot_system_curve(
         y_values.extend(y_data)  # Collect all y-values
         
         if validation:
-            plt.scatter(system_fn['reservoir_size'], system_fn[str(col)], label=f'Raw data T{col}', color=cmap[i], alpha=0.4, s=25, marker='x')
+            plt.scatter(system_fn['reservoir_cap'], system_fn[str(col)], label=f'Raw data T{col}', color=cmap[i % len(cmap)], alpha=0.4, s=25, marker='x')
     
     y_max = np.round(np.max(y_values), 0)
     plt.axis([0, x_max, 0, y_max])  # Set axis limits
     
     # Obtain colloquial timestep for x-axis
-    if timestep >= 365 * 24 * 3600:
-        timestep_txt = 'year'
-    elif timestep >= 24 * 3600:
-        timestep_txt = 'day'
-    elif timestep >= 3600:
-        timestep_txt = 'hour'
+    timestep_txt = colloquial_date_text(timestep)
     
     # Axes labels
     ax.set_xlabel('Specific reservoir capacity [mm]')

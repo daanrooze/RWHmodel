@@ -25,20 +25,20 @@ def return_period(
         y = df[col][0:mcl].reindex(df[col][0:mcl].index[::-1]).reset_index(drop=True).astype('float64')
         a, b = np.polyfit(np.log(x)[0:mcl], y[0:mcl], 1)
  
-        df_vars.loc[i] = [float(i), float(a), float(b)]
+        df_vars.loc[i] = [float(col), float(a), float(b)]
  
-    # Calculate required storage capacity for a set of return periods
-    req_storage = pd.DataFrame()
-    req_storage["Treturn"] = T_return_list
+    # Calculate the deficit events for a set of return periods
+    deficit_events_T_return = pd.DataFrame()
+    deficit_events_T_return["Treturn"] = T_return_list
     new_columns = {}
     for i, key in enumerate(df_vars["q"]):
-        new_columns[key] = func_log(df_vars["a"][i], df_vars["b"][i], req_storage["Treturn"])
+        new_columns[key] = func_log(df_vars["a"][i], df_vars["b"][i], deficit_events_T_return["Treturn"])
     new_columns_df = pd.DataFrame(new_columns)
-    req_storage = pd.concat([req_storage, new_columns_df], axis=1)
-    req_storage = req_storage.set_index("Treturn")
-    req_storage.index.name = None
-    req_storage = req_storage.T
-    return req_storage
+    deficit_events_T_return = pd.concat([deficit_events_T_return, new_columns_df], axis=1)
+    deficit_events_T_return = deficit_events_T_return.set_index("Treturn")
+    deficit_events_T_return.index.name = None
+    deficit_events_T_return = deficit_events_T_return.T
+    return deficit_events_T_return
 
 
 def func_fitting(
@@ -59,13 +59,13 @@ def func_fitting(
         # Determine initial conditions
         # Check https://stackoverflow.com/questions/45554107/asymptotic-regression-in-python for assumptions
         a0 = df_system[col].max()
-        b0 = df_system.iloc[(df_system[col]-(a0 / 2)).abs().argsort()[:1]].reservoir_size
+        b0 = df_system.iloc[(df_system[col]-(a0 / 2)).abs().argsort()[:1]].reservoir_cap
         n0 = 1.
         p0 = [a0, float(b0.iloc[0]), n0]
         #p0 = [float(a0), float(b0), float(n0)]
         
         # Curve fit using Scipy
-        popt, pcov = curve_fit(func_system_curve, df_system['reservoir_size'], df_system[col], p0=p0)
+        popt, pcov = curve_fit(func_system_curve, df_system['reservoir_cap'], df_system[col], p0=p0)
         
         # Store [a, b, n] variables in DataFrame
         df_vars.loc[col] = popt

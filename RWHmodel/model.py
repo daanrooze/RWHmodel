@@ -8,7 +8,7 @@ import toml
 from RWHmodel.reservoir import Reservoir
 from RWHmodel.timeseries import Demand, Forcing
 from RWHmodel.hydro_model import HydroModel
-from RWHmodel.utils import makedir, check_variables, convert_mm_to_m3
+from RWHmodel.utils import makedir, check_variables, convert_mm_to_m3, colloquial_date_text
 from RWHmodel.analysis import return_period
 
 from RWHmodel.plot import plot_meteo, plot_run, plot_system_curve, plot_saving_curve
@@ -158,7 +158,7 @@ class Model(object):
         reservoir_overflow = np.zeros(len(net_precip))
         deficit = np.zeros(len(net_precip))
         dry_days = np.zeros(len(net_precip))
-        consec_dry_days = np.zeros(len(net_precip))
+        deficit_timesteps = np.zeros(len(net_precip))
         
         # Run hydro_model per timestep         
         int_stor, runoff = self.hydro_model.calc_runoff(net_precip=net_precip)   
@@ -175,16 +175,16 @@ class Model(object):
             elif reservoir_stor[i] < demand_array[i]:
                 dry_days[i] = dry_days[i-1] + 1
             if dry_days[i-1] != 0 and dry_days[i] == 0:
-                consec_dry_days[i] = dry_days[i-1]
+                deficit_timesteps[i] = dry_days[i-1]
             else:
-                consec_dry_days[i] = 0
+                deficit_timesteps[i] = 0
         
         # Convert to dataframe
         df_data = {
             'reservoir_stor': reservoir_stor,
             'reservoir_overflow': reservoir_overflow,
             'deficit': deficit,
-            'consec_dry_days': consec_dry_days}
+            'deficit_timesteps': deficit_timesteps}
         df = pd.DataFrame(df_data, index = self.forcing.data['precip'].index)
         
         # Convert back to desired units
@@ -195,7 +195,11 @@ class Model(object):
             self.demand.data = convert_mm_to_m3(df = self.demand.data, col = "demand", surface_area = self.config["srf_area"])
         # Save results
         if save==True:
-            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={np.round(reservoir_cap,1)}_yr_demand={np.round(yearly_demand,1)}.csv")
+            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={np.round(self.reservoir.reservoir_cap,1)}_yr_demand={np.round(yearly_demand,1)}.csv")
+        if self.mode=='single':
+            print(f"Total demand:                   {np.round( self.demand.data['demand'].sum(), 1 )} {self.unit}")
+            print(f"Total demand from reservoir:    {np.round( self.demand.data['demand'].sum() - df['deficit'].sum(), 1 )} {self.unit}")
+            print(f"Total deficit:                  {np.round( df['deficit'].sum(), 1 )} {self.unit}")
         self.results = df
         return df
 
@@ -232,37 +236,38 @@ class Model(object):
     
         for reservoir_cap in capacity_lst:
             
-            df_dry_events_total = pd.DataFrame()
-            req_storage = pd.DataFrame()
+            df_deficit_events_total = pd.DataFrame()
+            deficit_events_T_return = pd.DataFrame()
             
             for demand in demand_lst:
                 if log:
-                    print(f"Running with reservoir capacity {np.round(reservoir_cap, 1)} mm and demand {np.round(demand, 1)} mm/{self.forcing.timestep} sec.")
+                    timestep_txt = colloquial_date_text(self.forcing.timestep)
+                    print(f"Running with reservoir capacity {np.round(reservoir_cap, 1)} mm and demand {np.round(demand, 1)} mm/{timestep_txt}.")
                 
                 df_run = self.run(demand=demand, reservoir_cap=reservoir_cap, save=save, seasonal_variation=seasonal_variation)
                 
-                dry_events = pd.DataFrame()
+                df_deficit_events = pd.DataFrame()
                 if method == "consecutive_days": 
-                    dry_events = df_run["consec_dry_days"].sort_values(ascending=False).to_frame()
-                    dry_events = dry_events.reset_index(drop=True)
-                    dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
+                    df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
+                    df_deficit_events = df_deficit_events.reset_index(drop=True)
+                    df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{demand}'})
                 if method == "total_days": 
                     df_run = df_run.resample('YE').sum()
-                    dry_events = df_run["consec_dry_days"].sort_values(ascending=False).to_frame()
-                    dry_events = dry_events.reset_index(drop=True)
-                    dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
+                    df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
+                    df_deficit_events = df_deficit_events.reset_index(drop=True)
+                    df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{demand}'})
                     
-                df_dry_events_total = pd.concat([df_dry_events_total, dry_events[[f'{demand}']]], axis=1)
+                df_deficit_events_total = pd.concat([df_deficit_events_total, df_deficit_events[[f'{demand}']]], axis=1)
             
-            df_dry_events_total['T_return'] = self.forcing.num_years / (df_dry_events_total.index + 1)
-            req_storage = return_period(df_dry_events_total, self.config["T_return_list"])
+            df_deficit_events_total['T_return'] = self.forcing.num_years / (df_deficit_events_total.index + 1)
+            deficit_events_T_return = return_period(df_deficit_events_total, self.config["T_return_list"])
             
             # Find optimal demand for specific reservoir size
             opt_demand_lst = []
-            for column in req_storage.columns:
+            for column in deficit_events_T_return.columns:
                 try:
                     # Filter rows where the value in the column is less than or equal to max_num_days
-                    boundary_condition = req_storage[req_storage[column] <= max_num_days].index
+                    boundary_condition = deficit_events_T_return[deficit_events_T_return[column] <= max_num_days].index
                     # Check if there are any indices that meet the condition
                     if not boundary_condition.empty:
                         # Get the last index from the filtered results
@@ -286,7 +291,7 @@ class Model(object):
             # Append this DataFrame to df_system
             df_system = pd.concat([df_system, opt_demand_df], ignore_index=True)
     
-        # Move 'reservoir_size' column to the front
+        # Move 'reservoir_cap' column to the front
         df_system = df_system[ ['reservoir_cap'] + [ col for col in df_system.columns if col != 'reservoir_cap' ] ]
         df_system.columns = df_system.columns.astype(str)
         

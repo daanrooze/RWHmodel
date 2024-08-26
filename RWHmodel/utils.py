@@ -82,3 +82,12 @@ def check_variables(mode, config, seasonal_variation):
     if missing_vars:
         missing_vars_str = ', '.join(missing_vars)
         raise ValueError(f"The following variables are missing in config: {missing_vars_str}")
+
+def colloquial_date_text(timestep):
+    if timestep >= 365 * 24 * 3600:
+        timestep_txt = 'year'
+    elif timestep >= 24 * 3600:
+        timestep_txt = 'day'
+    elif timestep >= 3600:
+        timestep_txt = 'hour'
+    return timestep_txt
