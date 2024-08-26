@@ -55,8 +55,7 @@ def check_variables(mode, config, seasonal_variation):
         ]
     if mode == "batch":
         variables = [
-            'max_num_days', 'T_return_list', 'int_cap', 'dem_min', 'dem_max',
-            'dem_step', 'cap_min', 'cap_max', 'cap_step', 'typologies_name',
+            'max_num_days', 'T_return_list', 'int_cap', 'typologies_name',
             'typologies_demand', 'typologies_area', 'shift', 'perc_constant',
             'reservoir_cap'
         ]

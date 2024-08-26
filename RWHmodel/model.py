@@ -274,9 +274,12 @@ class Model(object):
                         # Get the last index from the filtered results
                         opt_demand = int(boundary_condition[-1])
                         opt_demand_lst.append(demand_lst[opt_demand])
-                except Exception:
+                    else:
+                        opt_demand_lst.append(0)
+                except:
+                    pass
                     # Append 0 if no valid index was found
-                    opt_demand_lst.append(0)
+                    #opt_demand_lst.append(0)
             
             # Create a DataFrame for the current reservoir size's results
             opt_demand_df = pd.DataFrame([opt_demand_lst], columns=self.config["T_return_list"])
