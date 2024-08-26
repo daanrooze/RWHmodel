@@ -200,6 +200,7 @@ class Model(object):
         return df
 
 
+
     def batch_run(
         self,
         method,
@@ -226,19 +227,12 @@ class Model(object):
         
         max_num_days = self.config["max_num_days"]
     
-        # Initialize df_system outside the loop #TODO check
+        # Initialize df_system outside the loop
         df_system = pd.DataFrame(columns=self.config["T_return_list"] + ['reservoir_cap'])
-        
-        #columns = ['reservoir_size'] + [str(i) for i in self.config["T_return_list"]]
-        #print(columns)
-        # Create the DataFrame with the columns
-        #df_system = pd.DataFrame(columns=columns)
-        #columns = ['reservoir_size'] + [str(i) for i in self.config["T_return_list"]]
-        #print(df_system)
     
         for reservoir_cap in capacity_lst:
             
-            df_total = pd.DataFrame()
+            df_dry_events_total = pd.DataFrame()
             req_storage = pd.DataFrame()
             
             for demand in demand_lst:
@@ -253,15 +247,15 @@ class Model(object):
                     dry_events = dry_events.reset_index(drop=True)
                     dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
                 if method == "total_days": 
-                    run_df_yearly = df_run.resample('YE').sum()
-                    dry_events = run_df_yearly["consec_dry_days"].sort_values(ascending=False).to_frame()
+                    df_run = df_run.resample('YE').sum()
+                    dry_events = df_run["consec_dry_days"].sort_values(ascending=False).to_frame()
                     dry_events = dry_events.reset_index(drop=True)
                     dry_events = dry_events.rename(columns={'consec_dry_days': f'{demand}'})
                     
-                df_total = pd.concat([df_total, dry_events[[f'{demand}']]], axis=1)
+                df_dry_events_total = pd.concat([df_dry_events_total, dry_events[[f'{demand}']]], axis=1)
             
-            df_total['T_return'] = self.forcing.num_years / (df_total.index + 1)
-            req_storage = return_period(df_total, self.config["T_return_list"])
+            df_dry_events_total['T_return'] = self.forcing.num_years / (df_dry_events_total.index + 1)
+            req_storage = return_period(df_dry_events_total, self.config["T_return_list"])
             
             # Find optimal demand for specific reservoir size
             opt_demand_lst = []
@@ -278,13 +272,17 @@ class Model(object):
                         opt_demand_lst.append(0)
                 except:
                     pass
-                    # Append 0 if no valid index was found
-                    #opt_demand_lst.append(0)
-            
+                
             # Create a DataFrame for the current reservoir size's results
             opt_demand_df = pd.DataFrame([opt_demand_lst], columns=self.config["T_return_list"])
             # Add the reservoir size as a new column to this DataFrame
             opt_demand_df["reservoir_cap"] = reservoir_cap
+    
+            # Ensure the dtypes match before concatenation
+            for col in df_system.columns:
+                if col in opt_demand_df.columns and df_system[col].isna().all():
+                    df_system[col] = df_system[col].astype(opt_demand_df[col].dtype)
+            
             # Append this DataFrame to df_system
             df_system = pd.concat([df_system, opt_demand_df], ignore_index=True)
     
@@ -295,7 +293,7 @@ class Model(object):
         self.statistics = df_system
         df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv", index=False)
 
-    
+
     def plot(
         self,
         plot_type=None,
