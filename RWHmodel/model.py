@@ -11,7 +11,7 @@ from RWHmodel.hydro_model import HydroModel
 from RWHmodel.utils import makedir, check_variables, convert_mm_to_m3, colloquial_date_text
 from RWHmodel.analysis import return_period
 
-from RWHmodel.plot import plot_meteo, plot_run, plot_system_curve, plot_saving_curve
+from RWHmodel.plot import plot_meteo, plot_run, plot_run_stacked, plot_system_curve, plot_saving_curve
 
 
 class Model(object):
@@ -68,7 +68,7 @@ class Model(object):
         # Setup demand if given
         if type(demand_fn)==list:
             if demand_fn[1] > reservoir_range[0]:
-                raise ValueError("Maximum demand is greater than the reservoir capacity")
+                print("Warning: maximum demand is greater than the reservoir capacity.")
             self.config["dem_min"] = demand_fn[0]
             self.config["dem_max"] = demand_fn[1]
             if len(demand_fn) == 3:
@@ -112,6 +112,7 @@ class Model(object):
             self.config['reservoir_cap'] = (self.config['reservoir_cap'] / self.config["srf_area"]) * 1000
         # Initiate reservoir
         self.reservoir = Reservoir(self.config['reservoir_cap'], reservoir_initial_state)
+
         
     def setup_from_toml(self, setup_fn):
         folder = f"{self.root}/input"
@@ -311,7 +312,7 @@ class Model(object):
         reservoir_max: Optional[int] = None,
         **kwargs
     ):
-        plot_types = ["meteo", "run", "system_curve", "saving_curve"]
+        plot_types = ["meteo", "run", "run_stacked", "system_curve", "saving_curve"]
         if plot_type not in plot_types:
             raise ValueError(
                 f"Provide valid plot type from {plot_types}."
@@ -330,22 +331,36 @@ class Model(object):
                 aggregate = False
             )
         
-        if plot_type == "run":
+        if plot_type in ["run", "run_stacked"]:
             if fn:
                 fn = pd.read_csv(fn, sep=',')
             else:
                 fn = self.results
-            plot_run(
-                root = self.root,
-                name = self.name,
-                run_fn = fn,
-                demand_fn = self.demand.data,
-                unit = self.unit,
-                t_start = t_start,
-                t_end = t_end,
-                reservoir_cap = self.reservoir.reservoir_cap,
-                yearly_demand = self.demand.yearly_demand
-            )
+            
+            if plot_type == "run":
+                plot_run(
+                    root = self.root,
+                    name = self.name,
+                    run_fn = fn,
+                    demand_fn = self.demand.data,
+                    unit = self.unit,
+                    t_start = t_start,
+                    t_end = t_end,
+                    reservoir_cap = self.reservoir.reservoir_cap,
+                    yearly_demand = self.demand.yearly_demand
+                )
+            if plot_type == "run_stacked":
+                plot_run_stacked(
+                    root = self.root,
+                    name = self.name,
+                    run_fn = fn,
+                    demand_fn = self.demand.data,
+                    unit = self.unit,
+                    t_start = t_start,
+                    t_end = t_end,
+                    reservoir_cap = self.reservoir.reservoir_cap,
+                    yearly_demand = self.demand.yearly_demand
+                )
         
         if plot_type in ["system_curve", "saving_curve"]:
             if not hasattr(self, 'statistics') and not fn:
@@ -362,27 +377,28 @@ class Model(object):
         
             if not timestep:
                 timestep = self.demand.timestep
-        if plot_type == "system_curve":
-            plot_system_curve(
-                root = self.root,
-                name = self.name,
-                system_fn = fn,
-                max_num_days = self.config['max_num_days'],
-                timestep = timestep,
-                T_return_list = T_return_list,
-                validation = validation
-            )
-        
-        if plot_type == "saving_curve":
-            plot_saving_curve(
-                root = self.root,
-                name = self.name,
-                system_fn = fn,
-                max_num_days = self.config['max_num_days'],
-                typologies_name = self.config['typologies_name'],
-                typologies_demand = self.config['typologies_demand'],
-                typologies_area = self.config['typologies_area'],
-                T_return_list = T_return_list,
-                reservoir_max = reservoir_max,
-                ambitions = None
-            )
+            
+            if plot_type == "system_curve":
+                plot_system_curve(
+                    root = self.root,
+                    name = self.name,
+                    system_fn = fn,
+                    max_num_days = self.config['max_num_days'],
+                    timestep = timestep,
+                    T_return_list = T_return_list,
+                    validation = validation
+                )
+            
+            if plot_type == "saving_curve":
+                plot_saving_curve(
+                    root = self.root,
+                    name = self.name,
+                    system_fn = fn,
+                    max_num_days = self.config['max_num_days'],
+                    typologies_name = self.config['typologies_name'],
+                    typologies_demand = self.config['typologies_demand'],
+                    typologies_area = self.config['typologies_area'],
+                    T_return_list = T_return_list,
+                    reservoir_max = reservoir_max,
+                    ambitions = None
+                )

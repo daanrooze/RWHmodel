@@ -85,18 +85,18 @@ def plot_run(
         reservoir_cap,
         yearly_demand
     ):
-    df = run_fn
+    df_run = run_fn
     df_demand = demand_fn
     # Create plot
     fig, ax1 = plt.subplots(1, figsize=(14,6))
     ax2 = ax1.twinx()
     
     # Drawing lines and filled area
-    ax2.plot(df.index, df['reservoir_overflow'], linewidth=1, linestyle='-',
+    ax2.plot(df_run.index, df_run['reservoir_overflow'], linewidth=1, linestyle='-',
              label = 'Reservoir overflow', color='#00b389')
-    ax2.plot(df.index, df['reservoir_stor'], linewidth=1, linestyle='-',
+    ax2.plot(df_run.index, df_run['reservoir_stor'], linewidth=1, linestyle='-',
              label = 'Reservoir storage', color='#080c80') 
-    ax1.fill_between(df.index, y1=df['deficit'], y2=0, label = 'Deficit' , color='#be1e2d', alpha=0.35)
+    ax1.fill_between(df_run.index, y1=df_run['deficit'], y2=0, label = 'Deficit' , color='#be1e2d', alpha=0.35)
     ax1.plot(df_demand.index, df_demand['demand'], linewidth=1, linestyle='-',
              label = 'Demand', color='#ff960d')
     
@@ -106,11 +106,11 @@ def plot_run(
     ax2.set_ylabel(f'Storage and overflow [{unit}]')
     
     # Axes limits
-    y_max_ax1 = np.round(df['reservoir_stor'].max(), -1) + 10
-    y_max_ax2 = np.round(df_demand['demand'].max(), 0) + 1
-    ax2.set_ylim([0, y_max_ax1])
+    y_max_ax2 = np.round(df_run['reservoir_stor'].max(), -1) + 10
+    y_max_ax1 = np.round(df_demand['demand'].max(), 0) + 1
+    ax2.set_ylim([0, y_max_ax2])
     ax2.set_xlim([t_start, t_end])
-    ax1.set_ylim([0, y_max_ax2])
+    ax1.set_ylim([0, y_max_ax1])
     ax1.set_xlim([t_start, t_end])
     
     # Layout and grid
@@ -125,6 +125,48 @@ def plot_run(
     fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr_demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
     fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr_demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
     
+
+def plot_run_stacked(
+        root,
+        name,
+        run_fn, # Path to run output file
+        demand_fn,
+        unit,
+        t_start,
+        t_end,
+        reservoir_cap,
+        yearly_demand
+    ):
+        df_run = run_fn
+        df_demand = demand_fn
+        # Create plot
+        fig, ax1 = plt.subplots(1, figsize=(14,6))
+        
+        # Drawing lines and filled area
+        ax1.stackplot(df_run.index, df_demand['demand']-df_run['deficit'], df_run['deficit'], 
+              colors=['#080c80', '#be1e2d'],
+              alpha=[0.6, 0.9],
+              labels=['Demand from reservoir', 'Deficit'])
+        
+        # Axes labels
+        ax1.set_ylabel(f'Demand and deficit [{unit}]')
+        ax1.set_xlabel('Date')
+        
+        # Axes limits
+        ax1.set_xlim([t_start, t_end])
+        
+        # Layout and grid
+        ax1.spines.top.set_visible(False)
+        plt.grid(visible=True, which="major", color="black", linestyle="-", alpha=0.2)
+        plt.grid(visible=True, which="minor", color="black", linestyle="-", alpha=0.1)
+        
+        # Legend
+        fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
+        
+        # Export
+        fig.savefig(f"{root}/output/figures/{name}_run_stacked_reservoir={reservoir_cap}_yr_demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
+        fig.savefig(f"{root}/output/figures/{name}_run_stacked_reservoir={reservoir_cap}_yr_demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
+
 
 def plot_system_curve(
         root,
@@ -209,7 +251,7 @@ def plot_saving_curve(
         y_max = 20 # Default to maximum reservoir size of 20 m3
     
     fig, ax = plt.subplots(1, figsize=(8,6))
-    plt.axis([0, 100, 0, y_max]) #setting axis boundaries (xmin, xmax, ymin, ymax) #TODO: make variable of axis boundaries?
+    plt.axis([0, 100, 0, y_max]) #setting axis boundaries (xmin, xmax, ymin, ymax) #TODO: make variable of unit (mm or m3)
     
     # Create plot
     for i, typology in enumerate(typologies_name):
