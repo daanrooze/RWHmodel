@@ -141,10 +141,6 @@ def plot_run_coverage(
     df = run_fn.set_index('reservoir_cap')
     df.index.name = None
     
-    df.columns = pd.to_numeric(df.columns)
-    #df.index = np.round(df.index, 1)
-    #df.columns = np.round(pd.to_numeric(df.columns), 1)
-    
     # Extract numeric values from column names for x-axis labels and round
     x_labels = [float(name.replace('Demand', '').strip()) for name in df.columns]
     
@@ -173,6 +169,9 @@ def plot_run_coverage(
     fig.savefig(f"{root}/output/figures/{name}_run_coverage_reservoir={reservoir_cap}_yr_demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
 
     """
+    # Create plot
+    fig, ax1 = plt.subplots(1, figsize=(14,6))
+    
     # Drawing lines and filled area
     stacked = ax1.stackplot(df_run.index, 
                             df_demand['demand'] - df_run['deficit'], 
