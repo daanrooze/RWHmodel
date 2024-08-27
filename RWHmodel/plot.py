@@ -168,20 +168,6 @@ def plot_run_coverage(
     fig.savefig(f"{root}/output/figures/{name}_run_coverage_reservoir={reservoir_cap}_yr_demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
     fig.savefig(f"{root}/output/figures/{name}_run_coverage_reservoir={reservoir_cap}_yr_demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
 
-    """
-    # Create plot
-    fig, ax1 = plt.subplots(1, figsize=(14,6))
-    
-    # Drawing lines and filled area
-    stacked = ax1.stackplot(df_run.index, 
-                            df_demand['demand'] - df_run['deficit'], 
-                            df_run['deficit'], 
-                            colors=['#080c80', '#be1e2d'],
-                            labels=['Demand from reservoir', 'Deficit'])
-
-    # Adjust alpha for the second series (Deficit)
-    stacked[1].set_alpha(0.5)
-    """
 
 def plot_system_curve(
         root,
