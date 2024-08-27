@@ -425,6 +425,7 @@ class Model(object):
                 plot_saving_curve(
                     root = self.root,
                     name = self.name,
+                    unit = self.unit,
                     system_fn = fn,
                     max_num_days = self.config['max_num_days'],
                     typologies_name = self.config['typologies_name'],

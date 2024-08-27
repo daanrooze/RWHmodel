@@ -97,7 +97,7 @@ def plot_run(
              label = 'Reservoir overflow', color='#00b389')
     ax2.plot(df_run.index, df_run['reservoir_stor'], linewidth=1, linestyle='-',
              label = 'Reservoir storage', color='#080c80') 
-    ax1.fill_between(df_run.index, y1=df_run['deficit'], y2=0, label = 'Deficit' , color='#be1e2d', alpha=0.35)
+    ax1.fill_between(df_run.index, y1=df_run['deficit'], y2=0, label = 'Deficit' , color='#be1e2d', alpha=0.35, edgecolor='none')
     ax1.plot(df_demand.index, df_demand['demand'], linewidth=1, linestyle='-',
              label = 'Demand', color='#ff960d')
     
@@ -107,8 +107,12 @@ def plot_run(
     ax2.set_ylabel(f'Storage and overflow [{unit}]')
     
     # Axes limits
-    y_max_ax2 = np.round(df_run['reservoir_stor'].max(), -1) + 10
-    y_max_ax1 = np.round(df_demand['demand'].max(), 0) + 1
+    if unit == 'mm':
+        y_max_ax2 = np.round(df_run['reservoir_stor'].max(), -1) + 10
+        y_max_ax1 = np.round(df_demand['demand'].max(), 0) + 1
+    if unit == 'm3':
+        y_max_ax2 = np.round(df_run['reservoir_stor'].max(), 0) + 1
+        y_max_ax1 = np.round(df_demand['demand'].max(), 1) + 0.1
     ax2.set_ylim([0, y_max_ax2])
     ax2.set_xlim([t_start, t_end])
     ax1.set_ylim([0, y_max_ax1])
@@ -130,7 +134,7 @@ def plot_run(
 def plot_run_coverage(
         root,
         name,
-        run_fn, # Path to run summary output file #TODO: add possibility to load in data from self (does  not work now)
+        run_fn, # Path to run summary output file
         unit,
         timestep,
     ):
@@ -229,6 +233,7 @@ def plot_system_curve(
 def plot_saving_curve(
         root,
         name,
+        unit,
         system_fn, # Path to saved system file
         max_num_days, # The maximum number of total OR consecutive days
         typologies_name,
@@ -248,10 +253,13 @@ def plot_saving_curve(
     if reservoir_max:
         y_max = reservoir_max
     else:
-        y_max = 20 # Default to maximum reservoir size of 20 m3
+        if unit == 'mm':
+            y_max = 100 # Default to maximum reservoir size of 100 mm
+        if unit == 'm3':
+            y_max = 20 # Default to maximum reservoir size of 20 m3
     
     fig, ax = plt.subplots(1, figsize=(8,6))
-    plt.axis([0, 100, 0, y_max]) #setting axis boundaries (xmin, xmax, ymin, ymax) #TODO: make variable of unit (mm or m3)
+    plt.axis([0, 100, 0, y_max]) #setting axis boundaries (xmin, xmax, ymin, ymax)
     
     # Create plot
     for i, typology in enumerate(typologies_name):
