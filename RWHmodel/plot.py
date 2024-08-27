@@ -130,29 +130,27 @@ def plot_run(
 def plot_run_coverage(
         root,
         name,
-        mode, #TODO weghalen?
-        run_fn, # Path to run summary output file
-        demand_fn,
+        run_fn, # Path to run summary output file #TODO: add possibility to load in data from self (does  not work now)
         unit,
         timestep,
-        reservoir_cap,
-        yearly_demand
     ):
     df = run_fn.set_index('reservoir_cap')
     df.index.name = None
     
     # Extract numeric values from column names for x-axis labels and round
-    x_labels = [float(name.replace('Demand', '').strip()) for name in df.columns]
+    try:
+        x_labels = np.round(pd.to_numeric(df.columns, errors='coerce'), 1)
+    except ValueError:
+        x_labels = np.round(df.columns.astype(float), 1)
     
     # Create plot
     fig, ax1 = plt.subplots(1, figsize=(14,6))
-    #ax1.set_aspect('equal')
     
     # Create a colormap from the given colors
     cmap = mcolors.LinearSegmentedColormap.from_list('custom_cmap', ['#be1e2d', '#080c80'])
     
     # Plotting
-    c = ax1.pcolormesh(df.columns, df.index, df.values * 100, cmap=cmap, vmin=0, vmax=100)
+    c = ax1.pcolormesh(df.columns.astype(float), df.index, df.values.astype(float) * 100, cmap=cmap, vmin=0, vmax=100)
     
     # Obtain colloquial timestep for x-axis
     timestep_txt = colloquial_date_text(timestep)
@@ -162,11 +160,12 @@ def plot_run_coverage(
     plt.ylabel(f'Specific reservoir capacity [{unit}]')
     plt.colorbar(c, label='Demand coverage by reservoir (%)')
     
-    plt.xticks(ticks=np.arange(len(x_labels)), labels=np.round(x_labels, 1))
+    plt.xticks(ticks=x_labels, labels=np.round(x_labels, 1))
     
     # Export
-    fig.savefig(f"{root}/output/figures/{name}_run_coverage_reservoir={reservoir_cap}_yr_demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_run_coverage_reservoir={reservoir_cap}_yr_demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_run_coverage.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_run_coverage.svg", dpi=300, bbox_inches='tight')
+
 
 
 def plot_system_curve(

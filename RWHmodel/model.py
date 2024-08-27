@@ -314,12 +314,14 @@ class Model(object):
         df_system = df_system[ ['reservoir_cap'] + [ col for col in df_system.columns if col != 'reservoir_cap' ] ]
         df_system.columns = df_system.columns.astype(str)
         
+        df_coverage = df_coverage.reset_index(drop=False)
+        
         self.statistics = df_system
         self.results_summary = df_coverage
         
         # Save output to csv
         df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv", index=False)
-        df_coverage.to_csv(f"{self.root}/output/runs/summary/{self.name}_batch_run_coverage_summary.csv", index=True)
+        df_coverage.to_csv(f"{self.root}/output/runs/summary/{self.name}_batch_run_coverage_summary.csv", index=False)
 
 
     def plot(
@@ -390,13 +392,9 @@ class Model(object):
             plot_run_coverage(
                 root = self.root,
                 name = self.name,
-                mode = self.mode,
                 run_fn = fn,
-                demand_fn = self.demand.data,
                 unit = self.unit,
                 timestep = timestep,
-                reservoir_cap = self.reservoir.reservoir_cap,
-                yearly_demand = self.demand.yearly_demand
             )
         
         if plot_type in ["system_curve", "saving_curve"]:
