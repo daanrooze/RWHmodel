@@ -4,6 +4,7 @@ from RWHmodel.utils import convert_mm_to_m3, colloquial_date_text
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 ### COLOR MAPS
 # Default color map
@@ -126,47 +127,62 @@ def plot_run(
     fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr_demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
     
 
-def plot_run_stacked(
+def plot_run_coverage(
         root,
         name,
-        run_fn, # Path to run output file
+        mode, #TODO weghalen?
+        run_fn, # Path to run summary output file
         demand_fn,
         unit,
-        t_start,
-        t_end,
+        timestep,
         reservoir_cap,
         yearly_demand
     ):
-        df_run = run_fn
-        df_demand = demand_fn
-        # Create plot
-        fig, ax1 = plt.subplots(1, figsize=(14,6))
-        
-        # Drawing lines and filled area
-        ax1.stackplot(df_run.index, df_demand['demand']-df_run['deficit'], df_run['deficit'], 
-              colors=['#080c80', '#be1e2d'],
-              alpha=[0.6, 0.9],
-              labels=['Demand from reservoir', 'Deficit'])
-        
-        # Axes labels
-        ax1.set_ylabel(f'Demand and deficit [{unit}]')
-        ax1.set_xlabel('Date')
-        
-        # Axes limits
-        ax1.set_xlim([t_start, t_end])
-        
-        # Layout and grid
-        ax1.spines.top.set_visible(False)
-        plt.grid(visible=True, which="major", color="black", linestyle="-", alpha=0.2)
-        plt.grid(visible=True, which="minor", color="black", linestyle="-", alpha=0.1)
-        
-        # Legend
-        fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
-        
-        # Export
-        fig.savefig(f"{root}/output/figures/{name}_run_stacked_reservoir={reservoir_cap}_yr_demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
-        fig.savefig(f"{root}/output/figures/{name}_run_stacked_reservoir={reservoir_cap}_yr_demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
+    df = run_fn.set_index('reservoir_cap')
+    df.index.name = None
+    
+    df.columns = pd.to_numeric(df.columns)
+    #df.index = np.round(df.index, 1)
+    #df.columns = np.round(pd.to_numeric(df.columns), 1)
+    
+    # Extract numeric values from column names for x-axis labels and round
+    x_labels = [float(name.replace('Demand', '').strip()) for name in df.columns]
+    
+    # Create plot
+    fig, ax1 = plt.subplots(1, figsize=(14,6))
+    #ax1.set_aspect('equal')
+    
+    # Create a colormap from the given colors
+    cmap = mcolors.LinearSegmentedColormap.from_list('custom_cmap', ['#be1e2d', '#080c80'])
+    
+    # Plotting
+    c = ax1.pcolormesh(df.columns, df.index, df.values * 100, cmap=cmap, vmin=0, vmax=100)
+    
+    # Obtain colloquial timestep for x-axis
+    timestep_txt = colloquial_date_text(timestep)
+    
+    # Axes labels
+    plt.xlabel(f'Demand [{unit}/{timestep_txt}]')
+    plt.ylabel(f'Specific reservoir capacity [{unit}]')
+    plt.colorbar(c, label='Demand coverage by reservoir (%)')
+    
+    plt.xticks(ticks=np.arange(len(x_labels)), labels=np.round(x_labels, 1))
+    
+    # Export
+    fig.savefig(f"{root}/output/figures/{name}_run_coverage_reservoir={reservoir_cap}_yr_demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_run_coverage_reservoir={reservoir_cap}_yr_demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
 
+    """
+    # Drawing lines and filled area
+    stacked = ax1.stackplot(df_run.index, 
+                            df_demand['demand'] - df_run['deficit'], 
+                            df_run['deficit'], 
+                            colors=['#080c80', '#be1e2d'],
+                            labels=['Demand from reservoir', 'Deficit'])
+
+    # Adjust alpha for the second series (Deficit)
+    stacked[1].set_alpha(0.5)
+    """
 
 def plot_system_curve(
         root,
@@ -196,7 +212,7 @@ def plot_system_curve(
     for i, col in enumerate(T_return_list):
         # Plot system behavior curves
         y_data = func_system_curve(x_range, df_vars.loc[str(col),"a"], df_vars.loc[str(col), "b"], df_vars.loc[str(col), "n"])
-        plt.plot(x_range, y_data, label=f'T{col}', color=cmap[i % len(cmap)])# color=cmap[i]) #TODO check if this works
+        plt.plot(x_range, y_data, label=f'T{col}', color=cmap[i % len(cmap)])
         y_values.extend(y_data)  # Collect all y-values
         
         if validation:

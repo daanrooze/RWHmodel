@@ -11,7 +11,7 @@ from RWHmodel.hydro_model import HydroModel
 from RWHmodel.utils import makedir, check_variables, convert_mm_to_m3, colloquial_date_text
 from RWHmodel.analysis import return_period
 
-from RWHmodel.plot import plot_meteo, plot_run, plot_run_stacked, plot_system_curve, plot_saving_curve
+from RWHmodel.plot import plot_meteo, plot_run, plot_run_coverage, plot_system_curve, plot_saving_curve
 
 
 class Model(object):
@@ -38,6 +38,7 @@ class Model(object):
         makedir(f"{self.root}/output")
         makedir(f"{self.root}/output/figures")
         makedir(f"{self.root}/output/runs")
+        makedir(f"{self.root}/output/runs/summary")
         makedir(f"{self.root}/output/statistics")
         
         # Set model mode default to 'single'. Overrides in batch runs to 'batch'.
@@ -194,14 +195,25 @@ class Model(object):
             df = convert_mm_to_m3(df = df, col = "reservoir_overflow", surface_area = self.config["srf_area"])
             df = convert_mm_to_m3(df = df, col = "deficit", surface_area = self.config["srf_area"])
             self.demand.data = convert_mm_to_m3(df = self.demand.data, col = "demand", surface_area = self.config["srf_area"])
+        
+        # Calculate summarized results
+        demand_deficit = df['deficit'].sum()
+        demand_from_reservoir = self.demand.data['demand'].sum() - df['deficit'].sum()
+        
+        if self.mode=='single':
+            print(f"Total demand:                   {np.round( self.demand.data['demand'].sum(), 1 )} {self.unit}")
+            print(f"Total demand from reservoir:    {np.round( demand_from_reservoir, 1 )} {self.unit}")
+            print(f"Total deficit:                  {np.round( demand_deficit, 1 )} {self.unit}")
+        
+        self.results = df
+        self.results_summary = {}
+        self.results_summary['demand_from_reservoir'] = demand_from_reservoir
+        self.results_summary['demand_deficit'] = demand_deficit
+        
         # Save results
         if save==True:
             df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={np.round(self.reservoir.reservoir_cap,1)}_yr_demand={np.round(yearly_demand,1)}.csv")
-        if self.mode=='single':
-            print(f"Total demand:                   {np.round( self.demand.data['demand'].sum(), 1 )} {self.unit}")
-            print(f"Total demand from reservoir:    {np.round( self.demand.data['demand'].sum() - df['deficit'].sum(), 1 )} {self.unit}")
-            print(f"Total deficit:                  {np.round( df['deficit'].sum(), 1 )} {self.unit}")
-        self.results = df
+        
         return df
 
 
@@ -225,15 +237,20 @@ class Model(object):
                 "Ambiguous surface area. Unit conversion can only be used for a maximum of one surface area."
             )
     
-        # Define parameters
+        # Define demand range
         demand_lst = list(np.linspace(self.config["dem_min"], self.config["dem_max"], self.config["dem_step"]))
-        # Create reservoir range
+        # Create reservoir capacity range
         capacity_lst = list(np.linspace(self.config["cap_min"], self.config["cap_max"], self.config["cap_step"]))
         
         max_num_days = self.config["max_num_days"]
     
-        # Initialize df_system outside the loop
+        # Initialize df_system to store demand and reservoir figures for defined return periods (satisfying the max_num_days requirement)
         df_system = pd.DataFrame(columns=self.config["T_return_list"] + ['reservoir_cap'])
+        
+        # Initialize df_coverage to store summaries of coverage and deficit for each run.
+        df_coverage = pd.DataFrame(columns=demand_lst)
+        df_coverage['reservoir_cap'] = capacity_lst
+        df_coverage.set_index('reservoir_cap', inplace=True)
     
         for reservoir_cap in capacity_lst:
             
@@ -259,11 +276,12 @@ class Model(object):
                     df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{demand}'})
                     
                 df_deficit_events_total = pd.concat([df_deficit_events_total, df_deficit_events[[f'{demand}']]], axis=1)
+                df_coverage.loc[reservoir_cap, demand] = (self.results_summary['demand_from_reservoir'] / self.demand.data['demand'].sum())
             
             df_deficit_events_total['T_return'] = self.forcing.num_years / (df_deficit_events_total.index + 1)
             deficit_events_T_return = return_period(df_deficit_events_total, self.config["T_return_list"])
             
-            # Find optimal demand for specific reservoir size
+            # Find maximum demand for specific reservoir size that satisfies the max_num_days requirement
             opt_demand_lst = []
             for column in deficit_events_T_return.columns:
                 try:
@@ -297,7 +315,11 @@ class Model(object):
         df_system.columns = df_system.columns.astype(str)
         
         self.statistics = df_system
+        self.results_summary = df_coverage
+        
+        # Save output to csv
         df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv", index=False)
+        df_coverage.to_csv(f"{self.root}/output/runs/summary/{self.name}_batch_run_coverage_summary.csv", index=True)
 
 
     def plot(
@@ -312,7 +334,7 @@ class Model(object):
         reservoir_max: Optional[int] = None,
         **kwargs
     ):
-        plot_types = ["meteo", "run", "run_stacked", "system_curve", "saving_curve"]
+        plot_types = ["meteo", "run", "run_coverage", "system_curve", "saving_curve"]
         if plot_type not in plot_types:
             raise ValueError(
                 f"Provide valid plot type from {plot_types}."
@@ -320,6 +342,8 @@ class Model(object):
         # Overwrite self with arguments if given.
         t_start = pd.to_datetime(t_start) if t_start is not None else self.forcing.t_start
         t_end = pd.to_datetime(t_end) if t_end is not None else self.forcing.t_end
+        if not timestep:
+            timestep = self.demand.timestep
         
         if plot_type == "meteo":
             plot_meteo(
@@ -331,36 +355,49 @@ class Model(object):
                 aggregate = False
             )
         
-        if plot_type in ["run", "run_stacked"]:
+        if plot_type == "run":
+            if not hasattr(self, 'results') and not fn:
+                raise ValueError(
+                    f"Run model or load in previous batch run results to plot {plot_type}."
+                )
             if fn:
                 fn = pd.read_csv(fn, sep=',')
             else:
                 fn = self.results
             
-            if plot_type == "run":
-                plot_run(
-                    root = self.root,
-                    name = self.name,
-                    run_fn = fn,
-                    demand_fn = self.demand.data,
-                    unit = self.unit,
-                    t_start = t_start,
-                    t_end = t_end,
-                    reservoir_cap = self.reservoir.reservoir_cap,
-                    yearly_demand = self.demand.yearly_demand
+            plot_run(
+                root = self.root,
+                name = self.name,
+                run_fn = fn,
+                demand_fn = self.demand.data,
+                unit = self.unit,
+                t_start = t_start,
+                t_end = t_end,
+                reservoir_cap = self.reservoir.reservoir_cap,
+                yearly_demand = self.demand.yearly_demand
+            )
+    
+        if plot_type == "run_coverage":
+            if not hasattr(self, 'results_summary') and not fn:
+                raise ValueError(
+                    f"Run model or load in previous batch run results to plot {plot_type}."
                 )
-            if plot_type == "run_stacked":
-                plot_run_stacked(
-                    root = self.root,
-                    name = self.name,
-                    run_fn = fn,
-                    demand_fn = self.demand.data,
-                    unit = self.unit,
-                    t_start = t_start,
-                    t_end = t_end,
-                    reservoir_cap = self.reservoir.reservoir_cap,
-                    yearly_demand = self.demand.yearly_demand
-                )
+            if fn:
+                fn = pd.read_csv(fn, sep=',')
+            else:
+                fn = self.results_summary
+                
+            plot_run_coverage(
+                root = self.root,
+                name = self.name,
+                mode = self.mode,
+                run_fn = fn,
+                demand_fn = self.demand.data,
+                unit = self.unit,
+                timestep = timestep,
+                reservoir_cap = self.reservoir.reservoir_cap,
+                yearly_demand = self.demand.yearly_demand
+            )
         
         if plot_type in ["system_curve", "saving_curve"]:
             if not hasattr(self, 'statistics') and not fn:
@@ -374,9 +411,6 @@ class Model(object):
             
             if T_return_list is None:
                    T_return_list = self.config['T_return_list']
-        
-            if not timestep:
-                timestep = self.demand.timestep
             
             if plot_type == "system_curve":
                 plot_system_curve(
