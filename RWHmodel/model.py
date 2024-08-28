@@ -280,7 +280,14 @@ class Model(object):
                     df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{demand}'})
                     
                 df_deficit_events_total = pd.concat([df_deficit_events_total, df_deficit_events[[f'{demand}']]], axis=1)
-                df_coverage.loc[reservoir_cap, demand] = (self.results_summary['demand_from_reservoir'] / self.demand.data['demand'].sum())
+                
+                # Calculate coverage
+                total_demand_sum = self.demand.data['demand'].sum()
+                if np.isnan(total_demand_sum) or total_demand_sum == 0:
+                    df_coverage.loc[reservoir_cap, demand] = 0
+                else:
+                    df_coverage.loc[reservoir_cap, demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
+            
             
             df_deficit_events_total['T_return'] = self.forcing.num_years / (df_deficit_events_total.index + 1)
             deficit_events_T_return = return_period(df_deficit_events_total, self.config["T_return_list"])
@@ -288,18 +295,9 @@ class Model(object):
             # Find maximum demand for specific reservoir size that satisfies the max_num_days requirement
             opt_demand_lst = []
             for column in deficit_events_T_return.columns:
-                try:
-                    # Filter rows where the value in the column is less than or equal to max_num_days
-                    boundary_condition = deficit_events_T_return[deficit_events_T_return[column] <= max_num_days].index
-                    # Check if there are any indices that meet the condition
-                    if not boundary_condition.empty:
-                        # Get the last index from the filtered results
-                        opt_demand = boundary_condition[-1]
-                        opt_demand_lst.append(opt_demand)
-                    else:
-                        opt_demand_lst.append(0)
-                except:
-                    pass
+                boundary_condition = deficit_events_T_return[deficit_events_T_return[column] <= max_num_days].index
+                opt_demand = boundary_condition[-1] if not boundary_condition.empty else 0
+                opt_demand_lst.append(opt_demand)
                 
             # Create a DataFrame for the current reservoir size's results
             opt_demand_df = pd.DataFrame([opt_demand_lst], columns=self.config["T_return_list"])
