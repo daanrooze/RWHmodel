@@ -6,7 +6,44 @@ from scipy.optimize import curve_fit
 def func_log(a, b, x):
     return a * np.log(x) + b
 
+#def func_log(x, a, b, c): #TODO updated from chatgpt
+#    return a * np.log(b * x + c)
 
+def return_period(
+        df,
+        T_return_list = [1,2,5,10,20,50,100]
+    ):
+    colnames = df.columns[:-1]
+    df_vars = pd.DataFrame(columns=["q", "a", "b"], dtype='float64')
+    df_vars["q"] = np.zeros(len(df.keys()[:-1]))
+ 
+    for i, col in enumerate(colnames):
+        mcl = df[col].count()
+        mcl = min(100, mcl) # Set maximum number of events to 100 to get rid of extremely long tail
+        x = (
+            df["T_return"][0:mcl]
+            .reindex(df["T_return"][0:mcl].index[::-1])
+            .reset_index(drop=True)
+        ).astype('float64')
+        y = df[col][0:mcl].reindex(df[col][0:mcl].index[::-1]).reset_index(drop=True).astype('float64')
+        a, b = np.polyfit(np.log(x)[0:mcl], y[0:mcl], 1)
+ 
+        df_vars.loc[i] = [float(col), float(a), float(b)]
+ 
+    # Calculate the deficit events for a set of return periods
+    deficit_events_T_return = pd.DataFrame()
+    deficit_events_T_return["Treturn"] = T_return_list
+    new_columns = {}
+    for i, key in enumerate(df_vars["q"]):
+        new_columns[key] = func_log(df_vars["a"][i], df_vars["b"][i], deficit_events_T_return["Treturn"])
+    new_columns_df = pd.DataFrame(new_columns)
+    deficit_events_T_return = pd.concat([deficit_events_T_return, new_columns_df], axis=1)
+    deficit_events_T_return = deficit_events_T_return.set_index("Treturn")
+    deficit_events_T_return.index.name = None
+    deficit_events_T_return = deficit_events_T_return.T
+    return deficit_events_T_return
+
+"""
 def return_period(
         df,
         T_return_list = [1,2,5,10,20,50,100]
@@ -39,7 +76,7 @@ def return_period(
     deficit_events_T_return.index.name = None
     deficit_events_T_return = deficit_events_T_return.T
     return deficit_events_T_return
-
+"""
 
 def func_fitting(
         system_fn, # Path to saved system file

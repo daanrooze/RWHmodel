@@ -143,7 +143,7 @@ def plot_run_coverage(
     
     # Extract numeric values from column names for x-axis labels and round
     try:
-        x_labels = np.round(pd.to_numeric(df.columns, errors='coerce'), 1)
+        x_labels = np.round(pd.to_numeric(df.columns, errors='coerce'), 2)
     except ValueError:
         x_labels = np.round(df.columns.astype(float), 1)
     
@@ -164,7 +164,7 @@ def plot_run_coverage(
     plt.ylabel(f'Specific reservoir capacity [{unit}]')
     plt.colorbar(c, label='Demand coverage by reservoir (%)')
     
-    plt.xticks(ticks=x_labels, labels=np.round(x_labels, 1))
+    plt.xticks(ticks=x_labels, labels=x_labels)
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_run_coverage.png", dpi=300, bbox_inches='tight')

@@ -23,7 +23,7 @@ class Model(object):
         forcing_fn: str,
         demand_fn: Optional[str] = None,
         reservoir_range: Optional[list] = None,
-        reservoir_initial_state: float = 0,
+        reservoir_initial_state: float = 0, # as fraction of reservoir capacity
         timestep: Optional[int] = None,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
@@ -111,8 +111,12 @@ class Model(object):
         # Convert reservoir capacity to mm if unit set to "m3".
         if self.unit == "m3":
             self.config['reservoir_cap'] = (self.config['reservoir_cap'] / self.config["srf_area"]) * 1000
+        # Check if percentage of reservoir_initial_state is not greater than 1
+        if reservoir_initial_state > 1:
+            raise ValueError("Provide initial reservoir state as fraction of reservoir capacity (between 0 and 1).")
+        
         # Initiate reservoir
-        self.reservoir = Reservoir(self.config['reservoir_cap'], reservoir_initial_state)
+        self.reservoir = Reservoir(self.config['reservoir_cap'], reservoir_initial_state * self.config['reservoir_cap'])
 
         
     def setup_from_toml(self, setup_fn):
@@ -150,7 +154,7 @@ class Model(object):
                 t_start = self.forcing.t_start,
                 t_end = self.forcing.t_end
             )
-            self.demand.data.loc[:, "demand"] = demand_array
+        self.demand.data.loc[:, "demand"] = demand_array
         
         self.reservoir.reservoir_cap = reservoir_cap if reservoir_cap is not None else self.config["reservoir_cap"]
         
@@ -290,8 +294,8 @@ class Model(object):
                     # Check if there are any indices that meet the condition
                     if not boundary_condition.empty:
                         # Get the last index from the filtered results
-                        opt_demand = int(boundary_condition[-1])
-                        opt_demand_lst.append(demand_lst[opt_demand])
+                        opt_demand = boundary_condition[-1]
+                        opt_demand_lst.append(opt_demand)
                     else:
                         opt_demand_lst.append(0)
                 except:
