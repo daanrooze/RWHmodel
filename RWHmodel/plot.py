@@ -147,6 +147,10 @@ def plot_run_coverage(
     except ValueError:
         x_labels = np.round(df.columns.astype(float), 1)
     
+    # Adjust x_labels to ensure the number of ticks doesn't exceed 20
+    if len(x_labels) > 20:
+        x_labels = x_labels[::len(x_labels) // 20]
+    
     # Create plot
     fig, ax1 = plt.subplots(1, figsize=(14,6))
     

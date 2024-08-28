@@ -264,7 +264,7 @@ class Model(object):
             for demand in demand_lst:
                 if log:
                     timestep_txt = colloquial_date_text(self.forcing.timestep)
-                    print(f"Running with reservoir capacity {np.round(reservoir_cap, 1)} mm and demand {np.round(demand, 1)} mm/{timestep_txt}.")
+                    print(f"Running with reservoir capacity {np.round(reservoir_cap, 2)} mm and demand {np.round(demand, 2)} mm/{timestep_txt}.")
                 
                 df_run = self.run(demand=demand, reservoir_cap=reservoir_cap, save=save, seasonal_variation=seasonal_variation)
                 
@@ -287,7 +287,6 @@ class Model(object):
                     df_coverage.loc[reservoir_cap, demand] = 0
                 else:
                     df_coverage.loc[reservoir_cap, demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
-            
             
             df_deficit_events_total['T_return'] = self.forcing.num_years / (df_deficit_events_total.index + 1)
             deficit_events_T_return = return_period(df_deficit_events_total, self.config["T_return_list"])
