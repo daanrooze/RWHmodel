@@ -6,8 +6,6 @@ from scipy.optimize import curve_fit
 def func_log(a, b, x):
     return a * np.log(x) + b
 
-#def func_log(x, a, b, c): #TODO updated from chatgpt
-#    return a * np.log(b * x + c)
 
 def return_period(
         df,

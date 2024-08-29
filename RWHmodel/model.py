@@ -284,7 +284,7 @@ class Model(object):
                 # Calculate coverage
                 total_demand_sum = self.demand.data['demand'].sum()
                 if np.isnan(total_demand_sum) or total_demand_sum == 0:
-                    df_coverage.loc[reservoir_cap, demand] = 0
+                    df_coverage.loc[reservoir_cap, demand] = 1
                 else:
                     df_coverage.loc[reservoir_cap, demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
             

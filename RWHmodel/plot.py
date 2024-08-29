@@ -155,7 +155,7 @@ def plot_run_coverage(
     fig, ax1 = plt.subplots(1, figsize=(14,6))
     
     # Create a colormap from the given colors
-    cmap = mcolors.LinearSegmentedColormap.from_list('custom_cmap', ['#be1e2d', '#080c80'])
+    cmap = mcolors.LinearSegmentedColormap.from_list('custom_cmap', ['#FFFFFF', '#080c80']) #  #be1e2d #TODO
     
     # Plotting
     c = ax1.pcolormesh(df.columns.astype(float), df.index, df.values.astype(float) * 100, cmap=cmap, vmin=0, vmax=100)
@@ -169,6 +169,8 @@ def plot_run_coverage(
     plt.colorbar(c, label='Demand coverage by reservoir (%)')
     
     plt.xticks(ticks=x_labels, labels=x_labels)
+    
+    plt.grid(visible=True, which="major", color="white", linestyle="-", alpha=0.2)
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_run_coverage.png", dpi=300, bbox_inches='tight')
