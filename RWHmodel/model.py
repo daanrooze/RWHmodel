@@ -34,12 +34,8 @@ class Model(object):
             self.root = root
         else:
             raise ValueError("Provide root of model folder")
-        makedir(f"{self.root}/input")
-        makedir(f"{self.root}/output")
-        makedir(f"{self.root}/output/figures")
-        makedir(f"{self.root}/output/runs")
-        makedir(f"{self.root}/output/runs/summary")
-        makedir(f"{self.root}/output/statistics")
+        for folder in ['input', 'output', 'output/figures', 'output/runs', 'output/runs/summary', 'output/statistics']:
+            makedir(os.path.join(self.root, folder))
         
         # Set model mode default to 'single'. Overrides in batch runs to 'batch'.
         self.mode = 'single'
@@ -133,20 +129,22 @@ class Model(object):
             reservoir_cap: Optional = None,
             save=True,
         ):
+        
+        #TODO: move from here ###########################################################
         # Overwrite data in self with arguments if given.
         demand_array = np.full(len(self.forcing.data["precip"]), demand) if demand is not None else np.array(self.demand.data["demand"])
         # Implement seasonal variation transformation if given.
-        if type(self.demand.fn)==str and seasonal_variation==True:
+        if type(self.demand.fn)==str and seasonal_variation==True: #TODO: move outside of run function to batch run
             raise ValueError(
                 "Cannot transpose timeseries with seasonal variation."
             )
         
-        if self.demand.timestep == 86400:
+        if self.demand.timestep == 86400: #TODO: move outside of run function to batch run
             yearly_demand = demand_array[0] * 365
         else:
             yearly_demand = demand_array[0] * 24 * 365
         
-        if seasonal_variation:
+        if seasonal_variation: #TODO: move outside of run function to batch run
             demand_array = self.demand.seasonal_variation(
                 yearly_demand = yearly_demand,
                 perc_constant = self.config["perc_constant"],
@@ -154,9 +152,10 @@ class Model(object):
                 t_start = self.forcing.t_start,
                 t_end = self.forcing.t_end
             )
-        self.demand.data.loc[:, "demand"] = demand_array
+        self.demand.data.loc[:, "demand"] = demand_array #TODO: move outside of run function to batch run
         
-        self.reservoir.reservoir_cap = reservoir_cap if reservoir_cap is not None else self.config["reservoir_cap"]
+        #self.reservoir.reservoir_cap = reservoir_cap if reservoir_cap is not None else self.config["reservoir_cap"] #TODO: AL VERPLAATST
+        #TODO: move till here
         
         ## Initialize numpy arrays
         net_precip = np.array(self.forcing.data["precip"] - self.forcing.data["pet"])
@@ -169,7 +168,7 @@ class Model(object):
         # Run hydro_model per timestep         
         int_stor, runoff = self.hydro_model.calc_runoff(net_precip=net_precip)   
         
-        # Fill reservoir arrays
+        # Run reservoir model per timestep
         for i in range(1, len(net_precip)):
             self.reservoir.update_state(runoff = runoff[i], demand = demand_array[i])
             reservoir_stor[i] = self.reservoir.reservoir_stor
@@ -216,7 +215,7 @@ class Model(object):
         
         # Save results
         if save==True:
-            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={np.round(self.reservoir.reservoir_cap,1)}_yr_demand={np.round(yearly_demand,1)}.csv")
+            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={np.round(self.reservoir.reservoir_cap,1)}_yr_demand={np.round(self.demand.yearly_demand, 1)}.csv")
         
         return df
 
@@ -258,10 +257,38 @@ class Model(object):
     
         for reservoir_cap in capacity_lst:
             
+            # Update reservoir capacity to self
+            self.reservoir.reservoir_cap = reservoir_cap #TODO al verplaatst
+            
             df_deficit_events_total = pd.DataFrame()
             deficit_events_T_return = pd.DataFrame()
             
             for demand in demand_lst:
+                
+                """ """ #TODO
+                #TODO: update demand with seasonal variation
+                #TODO: update demand to .self here
+                #TODO: update yearly_demand
+                # Implement seasonal variation transformation if given.
+                if type(self.demand.fn)==str and seasonal_variation==True: #TODO: move outside of run function to batch run
+                    raise ValueError(
+                        "Cannot transpose timeseries with seasonal variation."
+                    )
+                
+                # Update yearly demand
+                self.demand.yearly_demand = demand * (86400 / self.demand.timestep) * 365 #TODO: already moved
+                
+                if seasonal_variation:
+                    demand_array = self.demand.seasonal_variation(
+                        yearly_demand = self.demand.yearly_demand,
+                        perc_constant = self.config["perc_constant"],
+                        shift= self.config["shift"],
+                        t_start = self.forcing.t_start,
+                        t_end = self.forcing.t_end
+                    )
+                    self.demand.data.loc[:, "demand"] = demand_array #TODO: set self within seasonal_variation?
+                
+                """ """ #TODO
                 if log:
                     timestep_txt = colloquial_date_text(self.forcing.timestep)
                     print(f"Running with reservoir capacity {np.round(reservoir_cap, 2)} mm and demand {np.round(demand, 2)} mm/{timestep_txt}.")
