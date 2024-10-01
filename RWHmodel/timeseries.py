@@ -118,16 +118,22 @@ class Demand(TimeSeries):
         self,
         root: str,
         demand_fn: str,
+        demand_transform: bool,
         forcing_fn: str,
         timestep: Optional[int] = None,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
         unit: str = "mm",
         setup_fn: Optional[dict] = None,
+        perc_constant: Optional[int] = None,
+        shift: Optional[int] = None
     ):
         super().__init__(
             fn=demand_fn, root=root, timestep=timestep, t_start=t_start, t_end=t_end
         )
+        
+        self.transform = demand_transform #TODO added this line
+        
         if isinstance(demand_fn, (int, float)):
             forcing_fn["demand"] = float(demand_fn) # Use forcing timeseries to fill demand timeseries
             self.data = forcing_fn[["demand"]]
@@ -159,9 +165,15 @@ class Demand(TimeSeries):
                     "Missing surface area for converting m3 per timestep to mm per timestep"
                 )
         self.yearly_demand = np.round(float((self.data["demand"].sum())/self.num_years),1)
-
-    def write(self, fn_out):
-        self.write_timeseries(df=self.demand, subdir="demand", fn_out=fn_out)
+        
+        if demand_transform:
+            self.data.loc[:, "demand"] = self.seasonal_variation(
+                yearly_demand = self.yearly_demand,
+                perc_constant = perc_constant,
+                shift= shift,
+                t_start = t_start,
+                t_end = t_end
+            )
         
     def seasonal_variation(
             self, 
@@ -178,23 +190,12 @@ class Demand(TimeSeries):
         daily_demand_constant = yearly_demand_constant / 365
         A = -(((2*np.pi)/365) * (365 * daily_demand_constant - yearly_demand)) / (- np.cos(shift + 365 * ((2*np.pi)/365)) + np.cos(shift) + 365 * ((2*np.pi)/365))
         daily_demand_array = []
-        for t in np.arange(start_day_of_year,start_day_of_year+(t_end - t_start).days): 
+        for t in np.arange(start_day_of_year, start_day_of_year + (t_end - t_start).days): 
             daily_tot = A * np.sin(((2*np.pi)/365)*t+shift) + daily_demand_constant + A
             daily_demand_array.append(daily_tot)
-        demand_array = daily_demand_array
-        return demand_array
+        return daily_demand_array
+    
+    def write(self, fn_out):
+        self.write_timeseries(df=self.demand, subdir="demand", fn_out=fn_out)
 
-#TODO: remove below
-"""
-class ConstantDemand:
-    def __init__(
-        self,
-        forcing_fn,  # take forcing_fn as template
-        constant: Union[int, float],
-    ) -> None:
-        forcing_fn["demand"] = constant
-        self.fn = int
-        self.data = forcing_fn[["demand"]]
-        self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
 
-"""

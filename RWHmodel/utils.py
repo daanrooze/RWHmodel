@@ -47,7 +47,7 @@ def makedir(path: str) -> None:
         print(f"{path} does not exist. Making new path.")
         os.makedirs(path)
 
-def check_variables(mode, config, seasonal_variation):
+def check_variables(mode, config, demand_transformation):
     # List of required variables
     if mode == "single":
         variables = [
@@ -71,8 +71,8 @@ def check_variables(mode, config, seasonal_variation):
         if var not in config:
             missing_vars.append(var)
 
-    # Check 'shift' and 'perc_constant' if 'seasonal_variation' is True
-    if seasonal_variation:
+    # Check 'shift' and 'perc_constant' if 'demand_transformation' is True
+    if demand_transformation:
         if 'shift' not in config:
             missing_vars.append('shift')
         if 'perc_constant' not in config:

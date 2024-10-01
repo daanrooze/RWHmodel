@@ -22,6 +22,7 @@ class Model(object):
         setup_fn: str,
         forcing_fn: str,
         demand_fn: Optional[str] = None,
+        demand_transform = False,
         reservoir_range: Optional[list] = None,
         reservoir_initial_state: float = 0, # as fraction of reservoir capacity
         timestep: Optional[int] = None,
@@ -52,6 +53,7 @@ class Model(object):
         
         # Setup of area characteristics
         self.setup_from_toml(setup_fn=setup_fn)
+        check_variables(self.mode, self.config, demand_transform)
         
         # Setup forcing
         self.forcing = Forcing(
@@ -71,23 +73,31 @@ class Model(object):
             if len(demand_fn) == 3:
                 self.config["dem_step"] = demand_fn[2]
             else:
-                self.config["dem_step"] = 100  # Default step size=100
+                self.config["dem_step"] = 100  # Default number of steps = 100
 
         self.demand = Demand(
             root = root,
             demand_fn = demand_fn,
+            demand_transform = demand_transform, #TODO added
             forcing_fn = self.forcing.data,
             timestep = timestep,
             t_start = t_start,
             t_end = t_end,
             unit = unit,
-            setup_fn = self.config
+            setup_fn = self.config,
+            perc_constant = self.config["perc_constant"], #TODO added
+            shift= self.config["shift"], #TODO added
         )
 
         if self.forcing.timestep != self.demand.timestep:
             raise ValueError("Forcing and demand timeseries have different timesteps. Change input files or resample by specifying timestep.")
         if len(self.forcing.data) != len(self.demand.data):
-            raise ValueError(f"Forcing and demand timeseries have different starting and/or end dates. Forcing timeseries runs from {self.forcing.t_start} to {self.forcing.t_end}, while demand timeseries runs from {self.demand.t_start} to {self.demand.t_end}. Change input files or clip timeseries by specifying interval.")
+            raise ValueError(
+                f"Forcing and demand timeseries have different starting and/or end dates. "
+                f"Forcing timeseries runs from {self.forcing.t_start} to {self.forcing.t_end}, "
+                f"while demand timeseries runs from {self.demand.t_start} to {self.demand.t_end}. "
+                "Change input files or clip timeseries by specifying interval."
+            )
         
         # Initiate hydro_model
         self.hydro_model = HydroModel(int_cap = self.config['int_cap'])
@@ -99,7 +109,7 @@ class Model(object):
             if len(reservoir_range) == 3:
                 self.config["cap_step"] = reservoir_range[2]
             else:
-                self.config["cap_step"] = 100  # Default step size=100
+                self.config["cap_step"] = 100  # Default number of steps = 100
         
         # Set reservoir capacity
         if not 'reservoir_cap' in self.config:
@@ -119,18 +129,17 @@ class Model(object):
         folder = f"{self.root}/input"
         with codecs.open(os.path.join(folder, setup_fn), "r", encoding="utf-8") as f:
             area_chars = toml.load(f)
-        
         self.config = area_chars
+
 
     def run(
             self,
-            demand: Optional = None,
-            seasonal_variation = False,
+            #demand: Optional = None,
             reservoir_cap: Optional = None,
             save=True,
         ):
-        
-        #TODO: move from here ###########################################################
+        """
+        #TODO: move from here ######################################################################################################################
         # Overwrite data in self with arguments if given.
         demand_array = np.full(len(self.forcing.data["precip"]), demand) if demand is not None else np.array(self.demand.data["demand"])
         # Implement seasonal variation transformation if given.
@@ -154,8 +163,9 @@ class Model(object):
             )
         self.demand.data.loc[:, "demand"] = demand_array #TODO: move outside of run function to batch run
         
-        #self.reservoir.reservoir_cap = reservoir_cap if reservoir_cap is not None else self.config["reservoir_cap"] #TODO: AL VERPLAATST
-        #TODO: move till here
+        #TODO: move till here ######################################################################################################################
+        """
+        demand_array = self.demand.data.loc[:, "demand"]
         
         ## Initialize numpy arrays
         net_precip = np.array(self.forcing.data["precip"] - self.forcing.data["pet"])
@@ -224,13 +234,12 @@ class Model(object):
     def batch_run(
         self,
         method,
-        seasonal_variation=False,
         log=False,
         save=False
     ):
         # Batch run function to obtain solution space and statistics on output.
         self.mode = 'batch'
-        check_variables(self.mode, self.config, seasonal_variation)
+        check_variables(self.mode, self.config, self.demand.transform)
         # Check if input is correct
         methods = ["total_days", "consecutive_days"]
         if method not in methods:
@@ -258,42 +267,37 @@ class Model(object):
         for reservoir_cap in capacity_lst:
             
             # Update reservoir capacity to self
-            self.reservoir.reservoir_cap = reservoir_cap #TODO al verplaatst
+            self.reservoir.reservoir_cap = reservoir_cap
             
             df_deficit_events_total = pd.DataFrame()
             deficit_events_T_return = pd.DataFrame()
             
             for demand in demand_lst:
                 
-                """ """ #TODO
-                #TODO: update demand with seasonal variation
-                #TODO: update demand to .self here
-                #TODO: update yearly_demand
                 # Implement seasonal variation transformation if given.
-                if type(self.demand.fn)==str and seasonal_variation==True: #TODO: move outside of run function to batch run
+                if type(self.demand.fn)==str and self.demand.transform==True:
                     raise ValueError(
                         "Cannot transpose timeseries with seasonal variation."
                     )
                 
                 # Update yearly demand
-                self.demand.yearly_demand = demand * (86400 / self.demand.timestep) * 365 #TODO: already moved
+                self.demand.yearly_demand = demand * (86400 / self.demand.timestep) * 365
                 
-                if seasonal_variation:
-                    demand_array = self.demand.seasonal_variation(
+                if self.demand.transform:
+                    self.demand.data.loc[:, "demand"] = self.demand.seasonal_variation(
                         yearly_demand = self.demand.yearly_demand,
                         perc_constant = self.config["perc_constant"],
                         shift= self.config["shift"],
                         t_start = self.forcing.t_start,
                         t_end = self.forcing.t_end
                     )
-                    self.demand.data.loc[:, "demand"] = demand_array #TODO: set self within seasonal_variation?
                 
-                """ """ #TODO
+                
                 if log:
                     timestep_txt = colloquial_date_text(self.forcing.timestep)
                     print(f"Running with reservoir capacity {np.round(reservoir_cap, 2)} mm and demand {np.round(demand, 2)} mm/{timestep_txt}.")
                 
-                df_run = self.run(demand=demand, reservoir_cap=reservoir_cap, save=save, seasonal_variation=seasonal_variation)
+                df_run = self.run(demand=demand, reservoir_cap=reservoir_cap, save=save)
                 
                 df_deficit_events = pd.DataFrame()
                 if method == "consecutive_days": 
