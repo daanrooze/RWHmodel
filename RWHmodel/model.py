@@ -363,7 +363,7 @@ class Model(object):
         t_end: Optional[str] = None,
         timestep: Optional[int] = None,
         fn: Optional[str] = None,
-        T_return_list: Optional[[int]] = None,
+        T_return_list: Optional[int] = None,
         validation: Optional[str] = None,
         reservoir_max: Optional[int] = None,
         **kwargs
