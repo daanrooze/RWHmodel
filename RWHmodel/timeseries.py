@@ -7,8 +7,6 @@ import pandas as pd
 
 from RWHmodel.utils import convert_m3_to_mm
 
-# TODO: implement option to clip dataframe based on time interval (t_start, t_end)
-
 
 class TimeSeries:
     file_formats = ["csv"]
@@ -60,9 +58,14 @@ class TimeSeries:
             df = df.resample(f"{timestep}s", label="right").sum()
         #else:
         #    self.timestep = int((df.index[1] - df.index[0]).total_seconds())
-
+        
+        # Mask timeseries based on t_start and t_end
         mask = (df.index > self.t_start) & (df.index <= self.t_end)
         df = df.loc[mask]
+        
+        # Transform data type to float
+        df[df.columns[0]] = df[df.columns[0]].astype('float')
+        
         return df
 
     def write_timeseries(
@@ -132,7 +135,8 @@ class Demand(TimeSeries):
             fn=demand_fn, root=root, timestep=timestep, t_start=t_start, t_end=t_end
         )
         
-        self.transform = demand_transform #TODO added this line
+        # Set self.transform if demand timeseries transformation is True
+        self.transform = demand_transform
         
         if isinstance(demand_fn, (int, float)):
             forcing_fn["demand"] = float(demand_fn) # Use forcing timeseries to fill demand timeseries
@@ -164,15 +168,15 @@ class Demand(TimeSeries):
                 raise ValueError(
                     "Missing surface area for converting m3 per timestep to mm per timestep"
                 )
-        self.yearly_demand = np.round(float((self.data["demand"].sum())/self.num_years),1)
+        self.yearly_demand = np.round(float((self.data["demand"].sum())/self.num_years), 1)
         
-        if demand_transform:
+        if self.transform:
             self.data.loc[:, "demand"] = self.seasonal_variation(
                 yearly_demand = self.yearly_demand,
                 perc_constant = perc_constant,
                 shift= shift,
-                t_start = t_start,
-                t_end = t_end
+                t_start = self.t_start,
+                t_end = self.t_end
             )
         
     def seasonal_variation(

@@ -180,14 +180,14 @@ class Model(object):
         
         # Run reservoir model per timestep
         for i in range(1, len(net_precip)):
-            self.reservoir.update_state(runoff = runoff[i], demand = demand_array[i])
+            self.reservoir.update_state(runoff = runoff[i], demand = demand_array.iloc[i]) #TODO fixed
             reservoir_stor[i] = self.reservoir.reservoir_stor
             reservoir_overflow[i] = self.reservoir.reservoir_overflow
             deficit[i] = self.reservoir.deficit
             # Tracking the timesteps for which the reservoir does not suffice.
-            if reservoir_stor[i] >= demand_array[i]:
+            if reservoir_stor[i] >= demand_array.iloc[i]: #TODO fixed
                 dry_days[i] = 0
-            elif reservoir_stor[i] < demand_array[i]:
+            elif reservoir_stor[i] < demand_array.iloc[i]: #TODO fixed
                 dry_days[i] = dry_days[i-1] + 1
             if dry_days[i-1] != 0 and dry_days[i] == 0:
                 deficit_timesteps[i] = dry_days[i-1]
