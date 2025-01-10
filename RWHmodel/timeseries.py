@@ -144,8 +144,8 @@ class Demand(TimeSeries):
             self.fn = float
             self.num_years = (max(forcing_fn.index) - min(forcing_fn.index)) / (np.timedelta64(1, "W") * 52)
             self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
-            self.t_start = forcing_fn.index.min()
-            self.t_end = forcing_fn.index.max()
+            self.t_start = pd.to_datetime(self.t_start) if self.t_start is not None else forcing_fn.index.min()
+            self.t_end = pd.to_datetime(self.t_end) if self.t_end is not None else forcing_fn.index.max()
         if isinstance(demand_fn, str):
             self.data = self.read_timeseries(
                 file_type="csv",
@@ -159,8 +159,8 @@ class Demand(TimeSeries):
             self.fn = list
             self.num_years = (max(forcing_fn.index) - min(forcing_fn.index)) / (np.timedelta64(1, "W") * 52)
             self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
-            self.t_start = forcing_fn.index.min()
-            self.t_end = forcing_fn.index.max()
+            self.t_start = pd.to_datetime(self.t_start) if self.t_start is not None else forcing_fn.index.min()
+            self.t_end = pd.to_datetime(self.t_end) if self.t_end is not None else forcing_fn.index.max()
 
         self.unit = unit
         if unit == "m3":  # Convert to mm
@@ -192,13 +192,9 @@ class Demand(TimeSeries):
             t_start,
             t_end
         ):
-        # insert function with sinus to implement seasonal variation.   #TODO
-        #yearly_demand_constant = perc_constant*yearly_demand   #TODO
-        #start_day_of_year = t_start.day_of_year-1   #TODO
-        
         # Insert function with sinus to implement seasonal variation.
         yearly_demand_constant = perc_constant * yearly_demand
-        start_day_of_year = t_start.day_of_year - 1  # Start day of the year
+        start_day_of_year = t_start.day_of_year  # Start day of the year
         total_days = (t_end - t_start).days  # Total number of days in the time range
         
         # transform yearly demand into daily demand.
@@ -206,7 +202,7 @@ class Demand(TimeSeries):
         A = -(((2*np.pi)/365) * (365 * daily_demand_constant - yearly_demand)) / (- np.cos(shift + 365 * ((2*np.pi)/365)) + np.cos(shift) + 365 * ((2*np.pi)/365))
         
         daily_demand_array = []
-        for t in np.arange(start_day_of_year, start_day_of_year + total_days):#(t_end - t_start).days): 
+        for t in np.arange(start_day_of_year - 1, start_day_of_year + total_days):#TODO: was:(t_end - t_start).days): 
             daily_tot = A * np.sin(((2*np.pi)/365)*t+shift) + daily_demand_constant + A
             daily_demand_array.append(daily_tot)
         
