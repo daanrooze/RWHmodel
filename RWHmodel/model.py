@@ -38,8 +38,18 @@ class Model(object):
         for folder in ['input', 'output', 'output/figures', 'output/runs', 'output/runs/summary', 'output/statistics']:
             makedir(os.path.join(self.root, folder))
         
-        # Set model mode default to 'single'. Overrides in batch runs to 'batch'.
-        self.mode = 'single'
+        # Check if seasonal transformation can be applied
+        if type(demand_fn)==str and demand_transform==True:
+                    raise ValueError(
+                        "Cannot transpose timeseries with seasonal variation."
+        )
+
+        # Set model mode default to 'single'. Overrides to 'batch' if demand_fn is of type list.
+        if type(demand_fn)==list:
+            self.mode = 'batch'
+        else: 
+            self.mode = 'single'
+        
         self.unit = unit
         
         # Setup model run name
@@ -53,7 +63,9 @@ class Model(object):
         
         # Setup of area characteristics
         self.setup_from_toml(setup_fn=setup_fn)
-        check_variables(self.mode, self.config, demand_transform)
+
+        # Check whether all required variables are provided
+        check_variables(self.mode, self.config, demand_transform) #TODO: improve functionality so mode is automatically determined
         
         # Setup forcing
         self.forcing = Forcing(
@@ -102,8 +114,6 @@ class Model(object):
         
         # Generate reservoir range if given
         if reservoir_range:
-            if demand_fn[1] > reservoir_range[0]:
-                print("Warning: maximum demand is greater than the reservoir capacity.") #TODO: moved warning to here
             self.config["cap_min"] = reservoir_range[0]
             self.config["cap_max"] = reservoir_range[1]
             if len(reservoir_range) == 3:
@@ -120,7 +130,10 @@ class Model(object):
         # Check if percentage of reservoir_initial_state is not greater than 1
         if reservoir_initial_state > 1:
             raise ValueError("Provide initial reservoir state as fraction of reservoir capacity (between 0 and 1).")
-        
+        # Check if the maximum demand exceeds the reservoir capacity.
+        if (self.demand.data.max() > self.config['reservoir_cap']).any():
+            print("Warning: maximum demand is greater than the reservoir capacity.")
+
         # Initiate reservoir
         self.reservoir = Reservoir(self.config['reservoir_cap'], reservoir_initial_state * self.config['reservoir_cap'])
 
@@ -134,8 +147,7 @@ class Model(object):
 
     def run(
             self,
-            #demand: Optional = None,
-            reservoir_cap: Optional = None,
+            reservoir_cap: Optional[float] = None,
             save=True,
         ):
         """
@@ -178,6 +190,10 @@ class Model(object):
         # Run hydro_model per timestep         
         int_stor, runoff = self.hydro_model.calc_runoff(net_precip=net_precip)   
         
+        #TODO: 2 lines below just for intermediate checking
+        print(demand_array)
+        print(reservoir_cap)
+
         # Run reservoir model per timestep
         for i in range(1, len(net_precip)):
             self.reservoir.update_state(runoff = runoff[i], demand = demand_array.iloc[i]) #TODO fixed
@@ -238,8 +254,6 @@ class Model(object):
         save=False
     ):
         # Batch run function to obtain solution space and statistics on output.
-        self.mode = 'batch'
-        check_variables(self.mode, self.config, self.demand.transform)
         # Check if input is correct
         methods = ["total_days", "consecutive_days"]
         if method not in methods:
@@ -275,11 +289,6 @@ class Model(object):
             for demand in demand_lst:
                 
                 # Implement seasonal variation transformation if given.
-                if type(self.demand.fn)==str and self.demand.transform==True:
-                    raise ValueError(
-                        "Cannot transpose timeseries with seasonal variation."
-                    )
-                
                 # Update yearly demand
                 self.demand.yearly_demand = demand * (86400 / self.demand.timestep) * 365
                 
@@ -297,7 +306,7 @@ class Model(object):
                     timestep_txt = colloquial_date_text(self.forcing.timestep)
                     print(f"Running with reservoir capacity {np.round(reservoir_cap, 2)} mm and demand {np.round(demand, 2)} mm/{timestep_txt}.")
                 
-                df_run = self.run(demand=demand, reservoir_cap=reservoir_cap, save=save)
+                df_run = self.run(reservoir_cap=reservoir_cap, save=save)
                 
                 df_deficit_events = pd.DataFrame()
                 if method == "consecutive_days": 

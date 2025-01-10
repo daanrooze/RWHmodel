@@ -202,7 +202,7 @@ class Demand(TimeSeries):
         A = -(((2*np.pi)/365) * (365 * daily_demand_constant - yearly_demand)) / (- np.cos(shift + 365 * ((2*np.pi)/365)) + np.cos(shift) + 365 * ((2*np.pi)/365))
         
         daily_demand_array = []
-        for t in np.arange(start_day_of_year - 1, start_day_of_year + total_days):#TODO: was:(t_end - t_start).days): 
+        for t in np.arange(start_day_of_year - 1, start_day_of_year + total_days):
             daily_tot = A * np.sin(((2*np.pi)/365)*t+shift) + daily_demand_constant + A
             daily_demand_array.append(daily_tot)
         

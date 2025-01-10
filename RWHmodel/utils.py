@@ -56,8 +56,7 @@ def check_variables(mode, config, demand_transformation):
     if mode == "batch":
         variables = [
             'max_num_days', 'T_return_list', 'int_cap', 'typologies_name',
-            'typologies_demand', 'typologies_area', 'shift', 'perc_constant',
-            'reservoir_cap'
+            'typologies_demand', 'typologies_area', 'shift', 'perc_constant'
         ]
 
     # List to store missing variables
