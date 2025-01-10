@@ -66,8 +66,6 @@ class Model(object):
         
         # Setup demand if given
         if type(demand_fn)==list:
-            if demand_fn[1] > reservoir_range[0]:
-                print("Warning: maximum demand is greater than the reservoir capacity.")
             self.config["dem_min"] = demand_fn[0]
             self.config["dem_max"] = demand_fn[1]
             if len(demand_fn) == 3:
@@ -104,6 +102,8 @@ class Model(object):
         
         # Generate reservoir range if given
         if reservoir_range:
+            if demand_fn[1] > reservoir_range[0]:
+                print("Warning: maximum demand is greater than the reservoir capacity.") #TODO: moved warning to here
             self.config["cap_min"] = reservoir_range[0]
             self.config["cap_max"] = reservoir_range[1]
             if len(reservoir_range) == 3:

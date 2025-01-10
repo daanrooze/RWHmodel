@@ -60,7 +60,7 @@ class TimeSeries:
         #    self.timestep = int((df.index[1] - df.index[0]).total_seconds())
         
         # Mask timeseries based on t_start and t_end
-        mask = (df.index > self.t_start) & (df.index <= self.t_end)
+        mask = (df.index >= self.t_start) & (df.index <= self.t_end)
         df = df.loc[mask]
         
         # Transform data type to float
@@ -144,6 +144,8 @@ class Demand(TimeSeries):
             self.fn = float
             self.num_years = (max(forcing_fn.index) - min(forcing_fn.index)) / (np.timedelta64(1, "W") * 52)
             self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
+            self.t_start = forcing_fn.index.min()
+            self.t_end = forcing_fn.index.max()
         if isinstance(demand_fn, str):
             self.data = self.read_timeseries(
                 file_type="csv",
@@ -152,11 +154,13 @@ class Demand(TimeSeries):
                 timestep=timestep,
             )
         if isinstance(demand_fn, list):
-            self.data = forcing_fn["demand"] = float(demand_fn[0]) # Use forcing timeseries to fill demand timeseries
-            self.data = forcing_fn[["demand"]]
+            forcing_fn["demand"] = float(demand_fn[0]) # Use forcing timeseries to fill demand timeseries
+            self.data = forcing_fn[["demand"]] 
             self.fn = list
             self.num_years = (max(forcing_fn.index) - min(forcing_fn.index)) / (np.timedelta64(1, "W") * 52)
             self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
+            self.t_start = forcing_fn.index.min()
+            self.t_end = forcing_fn.index.max()
 
         self.unit = unit
         if unit == "m3":  # Convert to mm
@@ -171,13 +175,14 @@ class Demand(TimeSeries):
         self.yearly_demand = np.round(float((self.data["demand"].sum())/self.num_years), 1)
         
         if self.transform:
-            self.data.loc[:, "demand"] = self.seasonal_variation(
+            timeseries_transformed = self.seasonal_variation(
                 yearly_demand = self.yearly_demand,
                 perc_constant = perc_constant,
                 shift= shift,
                 t_start = self.t_start,
                 t_end = self.t_end
             )
+            self.data.loc[:, "demand"] = timeseries_transformed
         
     def seasonal_variation(
             self, 
@@ -187,16 +192,24 @@ class Demand(TimeSeries):
             t_start,
             t_end
         ):
-        # insert function with sinus to implement seasonal variation.
-        yearly_demand_constant = perc_constant*yearly_demand
-        start_day_of_year = t_start.day_of_year-1
+        # insert function with sinus to implement seasonal variation.   #TODO
+        #yearly_demand_constant = perc_constant*yearly_demand   #TODO
+        #start_day_of_year = t_start.day_of_year-1   #TODO
+        
+        # Insert function with sinus to implement seasonal variation.
+        yearly_demand_constant = perc_constant * yearly_demand
+        start_day_of_year = t_start.day_of_year - 1  # Start day of the year
+        total_days = (t_end - t_start).days  # Total number of days in the time range
+        
         # transform yearly demand into daily demand.
         daily_demand_constant = yearly_demand_constant / 365
         A = -(((2*np.pi)/365) * (365 * daily_demand_constant - yearly_demand)) / (- np.cos(shift + 365 * ((2*np.pi)/365)) + np.cos(shift) + 365 * ((2*np.pi)/365))
+        
         daily_demand_array = []
-        for t in np.arange(start_day_of_year, start_day_of_year + (t_end - t_start).days): 
+        for t in np.arange(start_day_of_year, start_day_of_year + total_days):#(t_end - t_start).days): 
             daily_tot = A * np.sin(((2*np.pi)/365)*t+shift) + daily_demand_constant + A
             daily_demand_array.append(daily_tot)
+        
         return daily_demand_array
     
     def write(self, fn_out):
