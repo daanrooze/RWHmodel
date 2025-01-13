@@ -65,7 +65,7 @@ class Model(object):
         self.setup_from_toml(setup_fn=setup_fn)
 
         # Check whether all required variables are provided
-        check_variables(self.mode, self.config, demand_transform) #TODO: improve functionality so mode is automatically determined
+        check_variables(self.mode, self.config, demand_transform)
         
         # Setup forcing
         self.forcing = Forcing(
@@ -162,10 +162,6 @@ class Model(object):
         
         # Run hydro_model per timestep         
         int_stor, runoff = self.hydro_model.calc_runoff(net_precip=net_precip)   
-        
-        #TODO: 2 lines below just for intermediate checking
-        print(demand_array)
-        print(reservoir_cap)
 
         # Run reservoir model per timestep
         for i in range(1, len(net_precip)):
