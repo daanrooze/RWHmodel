@@ -150,33 +150,6 @@ class Model(object):
             reservoir_cap: Optional[float] = None,
             save=True,
         ):
-        """
-        #TODO: move from here ######################################################################################################################
-        # Overwrite data in self with arguments if given.
-        demand_array = np.full(len(self.forcing.data["precip"]), demand) if demand is not None else np.array(self.demand.data["demand"])
-        # Implement seasonal variation transformation if given.
-        if type(self.demand.fn)==str and seasonal_variation==True: #TODO: move outside of run function to batch run
-            raise ValueError(
-                "Cannot transpose timeseries with seasonal variation."
-            )
-        
-        if self.demand.timestep == 86400: #TODO: move outside of run function to batch run
-            yearly_demand = demand_array[0] * 365
-        else:
-            yearly_demand = demand_array[0] * 24 * 365
-        
-        if seasonal_variation: #TODO: move outside of run function to batch run
-            demand_array = self.demand.seasonal_variation(
-                yearly_demand = yearly_demand,
-                perc_constant = self.config["perc_constant"],
-                shift= self.config["shift"],
-                t_start = self.forcing.t_start,
-                t_end = self.forcing.t_end
-            )
-        self.demand.data.loc[:, "demand"] = demand_array #TODO: move outside of run function to batch run
-        
-        #TODO: move till here ######################################################################################################################
-        """
         demand_array = self.demand.data.loc[:, "demand"]
         
         ## Initialize numpy arrays
@@ -290,23 +263,7 @@ class Model(object):
                 
                 # Update timeseries, including seasonal transformation and yearly demand
                 Demand.update_demand(self.demand, update_data = demand)
-                """
-                # Implement seasonal variation transformation if given.
-                # Update yearly demand
-                self.demand.yearly_demand = demand * (86400 / self.demand.timestep) * 365
-
-                if self.demand.transform:
-                    self.demand.data.loc[:, "demand"] = self.demand.seasonal_variation(
-                        yearly_demand = self.demand.yearly_demand,
-                        perc_constant = self.config["perc_constant"],
-                        shift= self.config["shift"],
-                        t_start = self.forcing.t_start,
-                        t_end = self.forcing.t_end
-                    )
-                #else:
-                #    self.demand.data.loc[:, "demand"] = 
                 
-                """
                 if log:
                     timestep_txt = colloquial_date_text(self.forcing.timestep)
                     print(f"Running with reservoir capacity {np.round(reservoir_cap, 2)} mm and demand {np.round(demand, 2)} mm/{timestep_txt}.")
