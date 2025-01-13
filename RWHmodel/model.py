@@ -88,15 +88,15 @@ class Model(object):
         self.demand = Demand(
             root = root,
             demand_fn = demand_fn,
-            demand_transform = demand_transform, #TODO added
+            demand_transform = demand_transform,
             forcing_fn = self.forcing.data,
             timestep = timestep,
             t_start = t_start,
             t_end = t_end,
             unit = unit,
             setup_fn = self.config,
-            perc_constant = self.config["perc_constant"], #TODO added
-            shift= self.config["shift"], #TODO added
+            perc_constant = self.config["perc_constant"],
+            shift= self.config["shift"],
         )
 
         if self.forcing.timestep != self.demand.timestep:
@@ -196,14 +196,14 @@ class Model(object):
 
         # Run reservoir model per timestep
         for i in range(1, len(net_precip)):
-            self.reservoir.update_state(runoff = runoff[i], demand = demand_array.iloc[i]) #TODO fixed
+            self.reservoir.update_state(runoff = runoff[i], demand = demand_array.iloc[i])
             reservoir_stor[i] = self.reservoir.reservoir_stor
             reservoir_overflow[i] = self.reservoir.reservoir_overflow
             deficit[i] = self.reservoir.deficit
             # Tracking the timesteps for which the reservoir does not suffice.
-            if reservoir_stor[i] >= demand_array.iloc[i]: #TODO fixed
+            if reservoir_stor[i] >= demand_array.iloc[i]:
                 dry_days[i] = 0
-            elif reservoir_stor[i] < demand_array.iloc[i]: #TODO fixed
+            elif reservoir_stor[i] < demand_array.iloc[i]:
                 dry_days[i] = dry_days[i-1] + 1
             if dry_days[i-1] != 0 and dry_days[i] == 0:
                 deficit_timesteps[i] = dry_days[i-1]
@@ -288,10 +288,13 @@ class Model(object):
             
             for demand in demand_lst:
                 
+                # Update timeseries, including seasonal transformation and yearly demand
+                Demand.update_demand(self.demand, update_data = demand)
+                """
                 # Implement seasonal variation transformation if given.
                 # Update yearly demand
                 self.demand.yearly_demand = demand * (86400 / self.demand.timestep) * 365
-                
+
                 if self.demand.transform:
                     self.demand.data.loc[:, "demand"] = self.demand.seasonal_variation(
                         yearly_demand = self.demand.yearly_demand,
@@ -300,8 +303,10 @@ class Model(object):
                         t_start = self.forcing.t_start,
                         t_end = self.forcing.t_end
                     )
+                #else:
+                #    self.demand.data.loc[:, "demand"] = 
                 
-                
+                """
                 if log:
                     timestep_txt = colloquial_date_text(self.forcing.timestep)
                     print(f"Running with reservoir capacity {np.round(reservoir_cap, 2)} mm and demand {np.round(demand, 2)} mm/{timestep_txt}.")

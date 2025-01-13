@@ -69,7 +69,10 @@ class TimeSeries:
         return df
 
     def write_timeseries(
-        self, df: pd.DataFrame, subdir: str, fn_out: str, file_format: str = "csv"
+        self, df: pd.DataFrame,
+        subdir: str,
+        fn_out: str,
+        file_format: str = "csv"
     ) -> str:
         if file_format not in self.file_formats:
             raise ValueError(
@@ -137,6 +140,9 @@ class Demand(TimeSeries):
         
         # Set self.transform if demand timeseries transformation is True
         self.transform = demand_transform
+        if self.transform:
+            self.perc_constant = perc_constant
+            self.shift = shift
         
         if isinstance(demand_fn, (int, float)):
             forcing_fn["demand"] = float(demand_fn) # Use forcing timeseries to fill demand timeseries
@@ -177,13 +183,39 @@ class Demand(TimeSeries):
         if self.transform:
             timeseries_transformed = self.seasonal_variation(
                 yearly_demand = self.yearly_demand,
-                perc_constant = perc_constant,
-                shift= shift,
+                perc_constant = self.perc_constant,
+                shift= self.shift,
                 t_start = self.t_start,
                 t_end = self.t_end
             )
             self.data.loc[:, "demand"] = timeseries_transformed
+    
+    def update_demand(
+        self,
+        update_data
+    ) -> pd.DataFrame:
+        """
+        Update the demand data in the object.
         
+        Args:
+            update_data (pd.Series or pd.DataFrame): New demand data to replace the current demand.
+        """
+        self.data.loc[:, "demand"] = update_data
+        
+        # Recalculate yearly_demand
+        self.yearly_demand = np.round(float((self.data["demand"].sum()) / self.num_years), 1)
+        
+        # Reapply seasonal variation if transformation is enabled
+        if self.transform:
+            timeseries_transformed = self.seasonal_variation(
+                yearly_demand=self.yearly_demand,
+                perc_constant=self.perc_constant,
+                shift=self.shift,
+                t_start=self.t_start,
+                t_end=self.t_end
+            )
+            self.data["demand"] = timeseries_transformed
+    
     def seasonal_variation(
             self, 
             yearly_demand,  
