@@ -185,10 +185,11 @@ class Demand(TimeSeries):
                 yearly_demand = self.yearly_demand,
                 perc_constant = self.perc_constant,
                 shift= self.shift,
+                timestep = self.timestep,
                 t_start = self.t_start,
                 t_end = self.t_end
             )
-            self.data.loc[:, "demand"] = timeseries_transformed
+            self.data.loc[:, "demand"] = timeseries_transformed[:len(self.data)]
     
     def update_demand(
         self,
@@ -211,6 +212,7 @@ class Demand(TimeSeries):
                 yearly_demand=self.yearly_demand,
                 perc_constant=self.perc_constant,
                 shift=self.shift,
+                timestep = self.timestep,
                 t_start=self.t_start,
                 t_end=self.t_end
             )
@@ -221,6 +223,7 @@ class Demand(TimeSeries):
             yearly_demand,  
             perc_constant,
             shift,
+            timestep,
             t_start,
             t_end
         ):
@@ -231,14 +234,25 @@ class Demand(TimeSeries):
         
         # transform yearly demand into daily demand.
         daily_demand_constant = yearly_demand_constant / 365
-        A = -(((2*np.pi)/365) * (365 * daily_demand_constant - yearly_demand)) / (- np.cos(shift + 365 * ((2*np.pi)/365)) + np.cos(shift) + 365 * ((2*np.pi)/365))
         
-        daily_demand_array = []
+        A = -(((2*np.pi)/365) * (365 * daily_demand_constant - yearly_demand)) / (- np.cos(shift + 365 * ((2*np.pi)/365)) + np.cos(shift) + 365 * ((2*np.pi)/365))
+
+        demand_array = []
         for t in np.arange(start_day_of_year - 1, start_day_of_year + total_days):
             daily_tot = A * np.sin(((2*np.pi)/365)*t+shift) + daily_demand_constant + A
-            daily_demand_array.append(daily_tot)
-        
-        return daily_demand_array
+            
+            # If timestep is not 86400 seconds (i.e., not a full day), spread the daily value over smaller timesteps
+            if timestep != 86400:
+                # Calculate how many timesteps fit in a day
+                steps_per_day = 86400 // timestep  # Number of timesteps per day
+                # Repeat the daily value for each timestep within the day
+                for _ in range(steps_per_day):
+                    demand_array.append((daily_tot / (86400 / timestep)))
+            
+            else:
+                demand_array.append(daily_tot)
+
+        return demand_array
     
     def write(self, fn_out):
         self.write_timeseries(df=self.demand, subdir="demand", fn_out=fn_out)
