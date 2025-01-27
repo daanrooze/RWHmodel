@@ -51,7 +51,7 @@ def check_variables(mode, config, demand_transformation):
     # List of required variables
     if mode == "single":
         variables = [
-            'max_num_days', 'srf_area', 'int_cap', 'reservoir_cap', 'shift', 'perc_constant'
+            'srf_area', 'int_cap', 'reservoir_cap', 'shift', 'perc_constant'
         ]
     if mode == "batch":
         variables = [

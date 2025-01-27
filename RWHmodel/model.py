@@ -147,7 +147,6 @@ class Model(object):
 
     def run(
             self,
-            reservoir_cap: Optional[float] = None,
             save=True,
         ):
         demand_array = self.demand.data.loc[:, "demand"]
@@ -264,7 +263,7 @@ class Model(object):
                     timestep_txt = colloquial_date_text(self.forcing.timestep)
                     print(f"Running with reservoir capacity {np.round(reservoir_cap, 2)} mm and demand {np.round(demand, 2)} mm/{timestep_txt}.")
                 
-                df_run = self.run(reservoir_cap=reservoir_cap, save=save)
+                df_run = self.run(save=save)
                 
                 df_deficit_events = pd.DataFrame()
                 if method == "consecutive_days": 

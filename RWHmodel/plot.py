@@ -25,7 +25,7 @@ def plot_meteo(
         aggregate = False
     ):
     df = forcing_fn
-    # Clip DataFarme based on t_start and t_end
+    # Clip DataFrame based on t_start and t_end
     mask = (df.index > t_start) & (df.index <= t_end)
     df = df.loc[mask]
     # Obtain number of years
@@ -52,10 +52,8 @@ def plot_meteo(
     ax2.set_ylabel('Precipitation [mm]')
     
     # Axes limits
-    pet_max = np.round(df['pet'].max(), 0) + 1
-    precip_max = np.round(df['precip'].max(), -1) + 10
-    ax1.set_ylim([0, pet_max])
-    ax2.set_ylim([0, precip_max])
+    ax1.set_ylim([0, df['pet'].max()])
+    ax2.set_ylim([0, df['precip'].max()])
     if aggregate:
         ax1.set_xticks(np.arange(1,13))
         ax1.set_xticklabels(['J','F','M','A','M','J','J','A','S','O','N','D'])
@@ -127,55 +125,53 @@ def plot_run(
     fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
     
     # Export
-    fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr_demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr_demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
-    
+    fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr-demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr-demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
+
 
 def plot_run_coverage(
         root,
         name,
-        run_fn, # Path to run summary output file
+        run_fn,  # Path to run summary output file
         unit,
         timestep,
+        class_boundaries=[0, 20, 40, 60, 80, 100]  # Default boundaries for 5 classes
     ):
     df = run_fn.set_index('reservoir_cap')
     df.index.name = None
     
-    # Extract numeric values from column names for x-axis labels and round
     try:
         x_labels = np.round(pd.to_numeric(df.columns, errors='coerce'), 2)
     except ValueError:
         x_labels = np.round(df.columns.astype(float), 1)
     
-    # Adjust x_labels to ensure the number of ticks doesn't exceed 20
     if len(x_labels) > 20:
         x_labels = x_labels[::len(x_labels) // 20]
     
-    # Create plot
-    fig, ax1 = plt.subplots(1, figsize=(14,6))
+    cmap = ['#e63946', '#ff960d', '#00b389', '#0ebbf0', '#080c80']  # Inverted color map
     
-    # Create a colormap from the given colors
-    cmap = mcolors.LinearSegmentedColormap.from_list('custom_cmap', ['#FFFFFF', '#080c80']) #  #be1e2d #TODO
+    cmap = mcolors.ListedColormap(cmap)
     
-    # Plotting
-    c = ax1.pcolormesh(df.columns.astype(float), df.index, df.values.astype(float) * 100, cmap=cmap, vmin=0, vmax=100)
+    norm = mcolors.BoundaryNorm(class_boundaries, cmap.N)
     
-    # Obtain colloquial timestep for x-axis
+    fig, ax1 = plt.subplots(1, figsize=(14, 6))
+    
+    c = ax1.pcolormesh(df.columns.astype(float), df.index, df.values.astype(float) * 100, cmap=cmap, norm=norm)
+    
     timestep_txt = colloquial_date_text(timestep)
     
-    # Axes labels
-    plt.xlabel(f'Demand [{unit}/{timestep_txt}]')
+    plt.xlabel(f'Specific demand [{unit}/{timestep_txt}]')
     plt.ylabel(f'Specific reservoir capacity [{unit}]')
-    plt.colorbar(c, label='Demand coverage by reservoir (%)')
+    
+    cbar = plt.colorbar(c, label='Demand coverage by reservoir (%)')
+    cbar.set_ticks=np.linspace(0, 100, 6)
     
     plt.xticks(ticks=x_labels, labels=x_labels)
     
     plt.grid(visible=True, which="major", color="white", linestyle="-", alpha=0.2)
     
-    # Export
     fig.savefig(f"{root}/output/figures/{name}_run_coverage.png", dpi=300, bbox_inches='tight')
     fig.savefig(f"{root}/output/figures/{name}_run_coverage.svg", dpi=300, bbox_inches='tight')
-
 
 
 def plot_system_curve(
