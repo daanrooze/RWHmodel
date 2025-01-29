@@ -216,7 +216,7 @@ class Demand(TimeSeries):
                 t_start=self.t_start,
                 t_end=self.t_end
             )
-            self.data.loc[:, "demand"] = timeseries_transformed
+            self.data.loc[:, "demand"] = timeseries_transformed[:len(self.data.loc[:, "demand"])]
     
     def seasonal_variation(
             self, 
