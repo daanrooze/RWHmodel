@@ -120,10 +120,7 @@ class Model(object):
                 self.config["cap_step"] = reservoir_range[2]
             else:
                 self.config["cap_step"] = 100  # Default number of steps = 100
-        # Set inital reservoir capacity factor
-        self.reservoir_initial_state = reservoir_initial_state
-        # Set reservoir capacity
-        if not 'reservoir_cap' in self.config:
+            # Set reservoir capacity for range
             self.config['reservoir_cap'] = self.config['cap_min']
         # Convert reservoir capacity to mm if unit set to "m3".
         if self.unit == "m3":
@@ -131,6 +128,8 @@ class Model(object):
         # Check if percentage of reservoir_initial_state is not greater than 1
         if reservoir_initial_state > 1:
             raise ValueError("Provide initial reservoir state as fraction of reservoir capacity (between 0 and 1).")
+        # Set inital reservoir capacity factor
+        self.reservoir_initial_state = reservoir_initial_state 
         # Check if the maximum demand exceeds the reservoir capacity.
         if (self.demand.data.max() > self.config['reservoir_cap']).any():
             print("Warning: maximum demand is greater than the reservoir capacity.")
