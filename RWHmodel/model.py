@@ -120,7 +120,8 @@ class Model(object):
                 self.config["cap_step"] = reservoir_range[2]
             else:
                 self.config["cap_step"] = 100  # Default number of steps = 100
-        
+        # Set inital reservoir capacity factor
+        self.reservoir_initial_state = reservoir_initial_state
         # Set reservoir capacity
         if not 'reservoir_cap' in self.config:
             self.config['reservoir_cap'] = self.config['cap_min']
@@ -249,22 +250,21 @@ class Model(object):
         # Loop through reservoir capacities in capacity_lst
         for reservoir_cap in capacity_lst:
             
-            # Update reservoir capacity to self
-            self.reservoir.reservoir_cap = reservoir_cap
-            
             if method:
                 df_deficit_events_total = pd.DataFrame()
                 deficit_events_T_return = pd.DataFrame()
             
             for demand in demand_lst:
-                
+                # Re-initiate reservoir
+                self.reservoir = Reservoir(reservoir_cap, self.reservoir_initial_state * reservoir_cap)
+
                 # Update timeseries, including seasonal transformation and yearly demand
                 Demand.update_demand(self.demand, update_data = demand)
                 
                 if log:
                     timestep_txt = colloquial_date_text(self.forcing.timestep)
                     print(f"Running with reservoir capacity {np.round(reservoir_cap, 2)} mm and demand {np.round(demand, 2)} mm/{timestep_txt}.")
-                
+                print(self.reservoir.reservoir_cap, self.reservoir.reservoir_stor)
                 df_run = self.run(save=save)
                 
                 if method:
