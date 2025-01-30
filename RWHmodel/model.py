@@ -236,7 +236,7 @@ class Model(object):
         # Create reservoir capacity range
         capacity_lst = list(np.linspace(self.config["cap_min"], self.config["cap_max"], self.config["cap_step"]))
         
-        if method: #TODO: added conditional
+        if method:
             max_num_days = self.config["max_num_days"]
             # Initialize df_system to store demand and reservoir figures for defined return periods (satisfying the max_num_days requirement)
             df_system = pd.DataFrame(columns=self.config["T_return_list"] + ['reservoir_cap'])
@@ -252,7 +252,7 @@ class Model(object):
             # Update reservoir capacity to self
             self.reservoir.reservoir_cap = reservoir_cap
             
-            if method: #TODO: added conditional
+            if method:
                 df_deficit_events_total = pd.DataFrame()
                 deficit_events_T_return = pd.DataFrame()
             
@@ -267,7 +267,7 @@ class Model(object):
                 
                 df_run = self.run(save=save)
                 
-                if method: #TODO: added conditional
+                if method:
                     df_deficit_events = pd.DataFrame()
                     if method == "consecutive_days": 
                         df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
@@ -288,7 +288,7 @@ class Model(object):
                 else:
                     df_coverage.loc[reservoir_cap, demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
             
-            if method: #TODO: added conditional
+            if method:
                 df_deficit_events_total['T_return'] = self.forcing.num_years / (df_deficit_events_total.index + 1)
                 deficit_events_T_return = return_period(df_deficit_events_total, self.config["T_return_list"])
                 
@@ -312,7 +312,7 @@ class Model(object):
                 # Append this DataFrame to df_system
                 df_system = pd.concat([df_system, opt_demand_df], ignore_index=True)
     
-        if method: #TODO: added conditional
+        if method:
             # Move 'reservoir_cap' column to the front
             df_system = df_system[ ['reservoir_cap'] + [ col for col in df_system.columns if col != 'reservoir_cap' ] ]
             df_system.columns = df_system.columns.astype(str)
