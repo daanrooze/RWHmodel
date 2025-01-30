@@ -217,14 +217,14 @@ class Model(object):
 
     def batch_run(
         self,
-        method,
+        method=None,
         log=False,
         save=False
     ):
         # Batch run function to obtain solution space and statistics on output.
-        # Check if input is correct
+        # Check arguments
         methods = ["total_days", "consecutive_days"]
-        if method not in methods:
+        if method is not None and method not in methods:
             raise ValueError(f"Provide valid method from {methods}.")
         if self.unit != "mm" and len(self.config["typologies_name"]) > 1:
             raise ValueError(
@@ -236,23 +236,25 @@ class Model(object):
         # Create reservoir capacity range
         capacity_lst = list(np.linspace(self.config["cap_min"], self.config["cap_max"], self.config["cap_step"]))
         
-        max_num_days = self.config["max_num_days"]
-    
-        # Initialize df_system to store demand and reservoir figures for defined return periods (satisfying the max_num_days requirement)
-        df_system = pd.DataFrame(columns=self.config["T_return_list"] + ['reservoir_cap'])
-        
+        if method: #TODO: added conditional
+            max_num_days = self.config["max_num_days"]
+            # Initialize df_system to store demand and reservoir figures for defined return periods (satisfying the max_num_days requirement)
+            df_system = pd.DataFrame(columns=self.config["T_return_list"] + ['reservoir_cap'])
+            
         # Initialize df_coverage to store summaries of coverage and deficit for each run.
         df_coverage = pd.DataFrame(columns=demand_lst)
         df_coverage['reservoir_cap'] = capacity_lst
         df_coverage.set_index('reservoir_cap', inplace=True)
     
+        # Loop through reservoir capacities in capacity_lst
         for reservoir_cap in capacity_lst:
             
             # Update reservoir capacity to self
             self.reservoir.reservoir_cap = reservoir_cap
             
-            df_deficit_events_total = pd.DataFrame()
-            deficit_events_T_return = pd.DataFrame()
+            if method: #TODO: added conditional
+                df_deficit_events_total = pd.DataFrame()
+                deficit_events_T_return = pd.DataFrame()
             
             for demand in demand_lst:
                 
@@ -265,18 +267,19 @@ class Model(object):
                 
                 df_run = self.run(save=save)
                 
-                df_deficit_events = pd.DataFrame()
-                if method == "consecutive_days": 
-                    df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
-                    df_deficit_events = df_deficit_events.reset_index(drop=True)
-                    df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{demand}'})
-                if method == "total_days": 
-                    df_run = df_run.resample('YE').sum()
-                    df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
-                    df_deficit_events = df_deficit_events.reset_index(drop=True)
-                    df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{demand}'})
-                    
-                df_deficit_events_total = pd.concat([df_deficit_events_total, df_deficit_events[[f'{demand}']]], axis=1)
+                if method: #TODO: added conditional
+                    df_deficit_events = pd.DataFrame()
+                    if method == "consecutive_days": 
+                        df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
+                        df_deficit_events = df_deficit_events.reset_index(drop=True)
+                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{demand}'})
+                    if method == "total_days": 
+                        df_run = df_run.resample('YE').sum()
+                        df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
+                        df_deficit_events = df_deficit_events.reset_index(drop=True)
+                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{demand}'})
+                        
+                    df_deficit_events_total = pd.concat([df_deficit_events_total, df_deficit_events[[f'{demand}']]], axis=1)
                 
                 # Calculate coverage
                 total_demand_sum = self.demand.data['demand'].sum()
@@ -285,40 +288,42 @@ class Model(object):
                 else:
                     df_coverage.loc[reservoir_cap, demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
             
-            df_deficit_events_total['T_return'] = self.forcing.num_years / (df_deficit_events_total.index + 1)
-            deficit_events_T_return = return_period(df_deficit_events_total, self.config["T_return_list"])
-            
-            # Find maximum demand for specific reservoir size that satisfies the max_num_days requirement
-            opt_demand_lst = []
-            for column in deficit_events_T_return.columns:
-                boundary_condition = deficit_events_T_return[deficit_events_T_return[column] <= max_num_days].index
-                opt_demand = boundary_condition[-1] if not boundary_condition.empty else 0
-                opt_demand_lst.append(opt_demand)
+            if method: #TODO: added conditional
+                df_deficit_events_total['T_return'] = self.forcing.num_years / (df_deficit_events_total.index + 1)
+                deficit_events_T_return = return_period(df_deficit_events_total, self.config["T_return_list"])
                 
-            # Create a DataFrame for the current reservoir size's results
-            opt_demand_df = pd.DataFrame([opt_demand_lst], columns=self.config["T_return_list"])
-            # Add the reservoir size as a new column to this DataFrame
-            opt_demand_df["reservoir_cap"] = reservoir_cap
+                # Find maximum demand for specific reservoir size that satisfies the max_num_days requirement
+                opt_demand_lst = []
+                for column in deficit_events_T_return.columns:
+                    boundary_condition = deficit_events_T_return[deficit_events_T_return[column] <= max_num_days].index
+                    opt_demand = boundary_condition[-1] if not boundary_condition.empty else 0
+                    opt_demand_lst.append(opt_demand)
+                    
+                # Create a DataFrame for the current reservoir size's results
+                opt_demand_df = pd.DataFrame([opt_demand_lst], columns=self.config["T_return_list"])
+                # Add the reservoir size as a new column to this DataFrame
+                opt_demand_df["reservoir_cap"] = reservoir_cap
+        
+                # Ensure the dtypes match before concatenation
+                for col in df_system.columns:
+                    if col in opt_demand_df.columns and df_system[col].isna().all():
+                        df_system[col] = df_system[col].astype(opt_demand_df[col].dtype)
+                
+                # Append this DataFrame to df_system
+                df_system = pd.concat([df_system, opt_demand_df], ignore_index=True)
     
-            # Ensure the dtypes match before concatenation
-            for col in df_system.columns:
-                if col in opt_demand_df.columns and df_system[col].isna().all():
-                    df_system[col] = df_system[col].astype(opt_demand_df[col].dtype)
-            
-            # Append this DataFrame to df_system
-            df_system = pd.concat([df_system, opt_demand_df], ignore_index=True)
-    
-        # Move 'reservoir_cap' column to the front
-        df_system = df_system[ ['reservoir_cap'] + [ col for col in df_system.columns if col != 'reservoir_cap' ] ]
-        df_system.columns = df_system.columns.astype(str)
+        if method: #TODO: added conditional
+            # Move 'reservoir_cap' column to the front
+            df_system = df_system[ ['reservoir_cap'] + [ col for col in df_system.columns if col != 'reservoir_cap' ] ]
+            df_system.columns = df_system.columns.astype(str)
+            self.statistics = df_system
+
+            # Save df_system to csv
+            df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv", index=False)
         
         df_coverage = df_coverage.reset_index(drop=False)
-        
-        self.statistics = df_system
         self.results_summary = df_coverage
-        
-        # Save output to csv
-        df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv", index=False)
+        # Save coverage to csv
         df_coverage.to_csv(f"{self.root}/output/runs/summary/{self.name}_batch_run_coverage_summary.csv", index=False)
 
 
