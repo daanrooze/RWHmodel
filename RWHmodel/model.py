@@ -263,7 +263,7 @@ class Model(object):
                 if log:
                     timestep_txt = colloquial_date_text(self.forcing.timestep)
                     print(f"Running with reservoir capacity {np.round(reservoir_cap, 2)} mm and demand {np.round(demand, 2)} mm/{timestep_txt}.")
-                print(self.reservoir.reservoir_cap, self.reservoir.reservoir_stor)
+                
                 df_run = self.run(save=save)
                 
                 if method:
