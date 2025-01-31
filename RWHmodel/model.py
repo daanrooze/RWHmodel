@@ -163,7 +163,7 @@ class Model(object):
         int_stor, runoff = self.hydro_model.calc_runoff(net_precip=net_precip)   
 
         # Run reservoir model per timestep
-        for i in range(1, len(net_precip)):
+        for i in range(0, len(net_precip)): # Start from timestep = 0 to reflect state change at the end of the timestep
             self.reservoir.update_state(runoff = runoff[i], demand = demand_array.iloc[i])
             reservoir_stor[i] = self.reservoir.reservoir_stor
             reservoir_overflow[i] = self.reservoir.reservoir_overflow
@@ -209,7 +209,7 @@ class Model(object):
         
         # Save results
         if save==True:
-            df.to_csv(f"{self.root}/output/runs/{self.name}_single_run_reservoir={np.round(self.reservoir.reservoir_cap,1)}_yr_demand={np.round(self.demand.yearly_demand, 1)}.csv")
+            df.to_csv(f"{self.root}/output/runs/{self.name}_run_res-cap={np.round(self.reservoir.reservoir_cap,1)}_yr-dem={np.round(self.demand.yearly_demand, 1)}.csv")
         
         return df
 
