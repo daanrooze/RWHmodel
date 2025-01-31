@@ -17,6 +17,7 @@ dependencies = [
     "toml",              # parsing toml files
     "matplotlib",        # plotting
     "scipy"              # statistical modules
+    "tqdm"               # progress bar
 ]
 
 version = "0.1.0"
@@ -33,9 +34,6 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-# here you can add dependency groups like this: 
-# group = [dep1, dep2,...]
-# NOT NEEDED FOR RWHMODEL?
 doc = []
 dev = [
     "black",            # code formatting

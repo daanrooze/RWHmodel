@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import codecs
 import toml
+from tqdm import tqdm
 
 from RWHmodel.reservoir import Reservoir
 from RWHmodel.timeseries import Demand, Forcing
@@ -222,6 +223,9 @@ class Model(object):
         save=False
     ):
         # Batch run function to obtain solution space and statistics on output.
+        # Initiate progress bar
+        pbar = tqdm(total = self.config["dem_max"] * self.config["cap_max"], desc="Processing", unit="iter")
+        
         # Check arguments
         methods = ["total_timesteps", "consecutive_timesteps"]
         if method is not None and method not in methods:
@@ -254,6 +258,9 @@ class Model(object):
                 deficit_events_T_return = pd.DataFrame()
             
             for demand in demand_lst:
+                # Update progress bar
+                pbar.update(1)
+
                 # Re-initiate reservoir
                 self.reservoir = Reservoir(reservoir_cap, self.reservoir_initial_state * reservoir_cap)
 
@@ -324,6 +331,8 @@ class Model(object):
         self.results_summary = df_coverage
         # Save coverage to csv
         df_coverage.to_csv(f"{self.root}/output/runs/summary/{self.name}_batch_run_coverage_summary.csv", index=False)
+        # Close progress bar
+        pbar.close()
 
 
     def plot(
