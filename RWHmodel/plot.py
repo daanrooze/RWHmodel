@@ -105,15 +105,9 @@ def plot_run(
     ax2.set_ylabel(f'Storage and overflow [{unit}]')
     
     # Axes limits
-    if unit == 'mm':
-        y_max_ax2 = np.round(df_run['reservoir_stor'].max(), -1) + 10
-        y_max_ax1 = np.round(df_demand['demand'].max(), 0) + 1
-    if unit == 'm3':
-        y_max_ax2 = np.round(df_run['reservoir_stor'].max(), 0) + 1
-        y_max_ax1 = np.round(df_demand['demand'].max(), 1) + 0.1
-    ax2.set_ylim([0, y_max_ax2])
+    ax2.set_ylim([0, df_run['reservoir_stor'].max() * 1.1])
     ax2.set_xlim([t_start, t_end])
-    ax1.set_ylim([0, y_max_ax1])
+    ax1.set_ylim([0, df_demand['demand'].max() * 1.1])
     ax1.set_xlim([t_start, t_end])
     
     # Layout and grid
@@ -178,7 +172,7 @@ def plot_system_curve(
         root,
         name,
         system_fn,
-        max_num_days, # The maximum number of total OR consecutive days,
+        threshold,
         timestep,
         T_return_list = [1,2,5,10],
         validation = False
@@ -227,8 +221,8 @@ def plot_system_curve(
     fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
     
     # Export
-    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{max_num_days}numdays.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{max_num_days}numdays.svg", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{threshold}numdays.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{threshold}numdays.svg", dpi=300, bbox_inches='tight')
 
     
 
@@ -237,7 +231,7 @@ def plot_saving_curve(
         name,
         unit,
         system_fn, # Path to saved system file
-        max_num_days, # The maximum number of total OR consecutive days
+        threshold, # The maximum number of total OR consecutive days
         typologies_name,
         typologies_demand, # List of typologies and yearly demand, from setup_batch.toml file.
         typologies_area, # List of typologies and surface area, from setup_batch.toml file.
@@ -307,5 +301,5 @@ def plot_saving_curve(
     fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(typologies_name))
     
     # Export
-    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{max_num_days}numdays.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{max_num_days}numdays.svg", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{threshold}numdays.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{threshold}numdays.svg", dpi=300, bbox_inches='tight')

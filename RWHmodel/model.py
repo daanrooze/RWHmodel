@@ -156,7 +156,7 @@ class Model(object):
         reservoir_stor = np.zeros(len(net_precip))
         reservoir_overflow = np.zeros(len(net_precip))
         deficit = np.zeros(len(net_precip))
-        dry_days = np.zeros(len(net_precip))
+        dry_timestep = np.zeros(len(net_precip))
         deficit_timesteps = np.zeros(len(net_precip))
         
         # Run hydro_model per timestep         
@@ -170,11 +170,11 @@ class Model(object):
             deficit[i] = self.reservoir.deficit
             # Tracking the timesteps for which the reservoir does not suffice.
             if reservoir_stor[i] >= demand_array.iloc[i]:
-                dry_days[i] = 0
+                dry_timestep[i] = 0
             elif reservoir_stor[i] < demand_array.iloc[i]:
-                dry_days[i] = dry_days[i-1] + 1
-            if dry_days[i-1] != 0 and dry_days[i] == 0:
-                deficit_timesteps[i] = dry_days[i-1]
+                dry_timestep[i] = dry_timestep[i-1] + 1
+            if dry_timestep[i-1] != 0 and dry_timestep[i] == 0:
+                deficit_timesteps[i] = dry_timestep[i-1]
             else:
                 deficit_timesteps[i] = 0
         
@@ -223,7 +223,7 @@ class Model(object):
     ):
         # Batch run function to obtain solution space and statistics on output.
         # Check arguments
-        methods = ["total_days", "consecutive_days"]
+        methods = ["total_timesteps", "consecutive_timesteps"]
         if method is not None and method not in methods:
             raise ValueError(f"Provide valid method from {methods}.")
         if self.unit != "mm" and len(self.config["typologies_name"]) > 1:
@@ -237,8 +237,8 @@ class Model(object):
         capacity_lst = list(np.linspace(self.config["cap_min"], self.config["cap_max"], self.config["cap_step"]))
         
         if method:
-            max_num_days = self.config["max_num_days"]
-            # Initialize df_system to store demand and reservoir figures for defined return periods (satisfying the max_num_days requirement)
+            threshold = self.config["threshold"]
+            # Initialize df_system to store demand and reservoir figures for defined return periods (satisfying the threshold requirement)
             df_system = pd.DataFrame(columns=self.config["T_return_list"] + ['reservoir_cap'])
             
         # Initialize df_coverage to store summaries of coverage and deficit for each run.
@@ -268,11 +268,11 @@ class Model(object):
                 
                 if method:
                     df_deficit_events = pd.DataFrame()
-                    if method == "consecutive_days": 
+                    if method == "consecutive_timesteps": 
                         df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
                         df_deficit_events = df_deficit_events.reset_index(drop=True)
                         df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{demand}'})
-                    if method == "total_days": 
+                    if method == "total_timesteps": 
                         df_run = df_run.resample('YE').sum()
                         df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
                         df_deficit_events = df_deficit_events.reset_index(drop=True)
@@ -291,10 +291,10 @@ class Model(object):
                 df_deficit_events_total['T_return'] = self.forcing.num_years / (df_deficit_events_total.index + 1)
                 deficit_events_T_return = return_period(df_deficit_events_total, self.config["T_return_list"])
                 
-                # Find maximum demand for specific reservoir size that satisfies the max_num_days requirement
+                # Find maximum demand for specific reservoir size that satisfies the threshold requirement
                 opt_demand_lst = []
                 for column in deficit_events_T_return.columns:
-                    boundary_condition = deficit_events_T_return[deficit_events_T_return[column] <= max_num_days].index
+                    boundary_condition = deficit_events_T_return[deficit_events_T_return[column] <= threshold].index
                     opt_demand = boundary_condition[-1] if not boundary_condition.empty else 0
                     opt_demand_lst.append(opt_demand)
                     
@@ -417,7 +417,7 @@ class Model(object):
                     root = self.root,
                     name = self.name,
                     system_fn = fn,
-                    max_num_days = self.config['max_num_days'],
+                    threshold = self.config['threshold'],
                     timestep = timestep,
                     T_return_list = T_return_list,
                     validation = validation
@@ -429,7 +429,7 @@ class Model(object):
                     name = self.name,
                     unit = self.unit,
                     system_fn = fn,
-                    max_num_days = self.config['max_num_days'],
+                    threshold = self.config['threshold'],
                     typologies_name = self.config['typologies_name'],
                     typologies_demand = self.config['typologies_demand'],
                     typologies_area = self.config['typologies_area'],
