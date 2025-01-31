@@ -157,7 +157,7 @@ def plot_run_coverage(
     plt.xlabel(f'Specific demand [{unit}/{timestep_txt}]')
     plt.ylabel(f'Specific reservoir capacity [{unit}]')
     
-    cbar = plt.colorbar(c, label='Demand coverage by reservoir (%)')
+    cbar = plt.colorbar(c, label='Yearly demand coverage by reservoir (%)')
     cbar.set_ticks=np.linspace(0, 100, 6)
     
     plt.xticks(ticks=x_labels, labels=x_labels)
