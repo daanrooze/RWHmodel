@@ -278,14 +278,14 @@ class Model(object):
                     if method == "consecutive_timesteps": 
                         df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
                         df_deficit_events = df_deficit_events.reset_index(drop=True)
-                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{demand}'})
+                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{self.demand.yearly_demand}'}) #TODO: yearly_demand was 'demand'
                     if method == "total_timesteps": 
                         df_run = df_run.resample('YE').sum()
                         df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
                         df_deficit_events = df_deficit_events.reset_index(drop=True)
-                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{demand}'})
+                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{self.demand.yearly_demand}'}) #TODO: yearly_demand was 'demand'
                         
-                    df_deficit_events_total = pd.concat([df_deficit_events_total, df_deficit_events[[f'{demand}']]], axis=1)
+                    df_deficit_events_total = pd.concat([df_deficit_events_total, df_deficit_events[[f'{self.demand.yearly_demand}']]], axis=1) #TODO: yearly_demand was 'demand'
                 
                 # Calculate coverage
                 total_demand_sum = self.demand.data['demand'].sum()
@@ -442,6 +442,7 @@ class Model(object):
                     typologies_name = self.config['typologies_name'],
                     typologies_demand = self.config['typologies_demand'],
                     typologies_area = self.config['typologies_area'],
+                    timestep = timestep,
                     T_return_list = T_return_list,
                     reservoir_max = reservoir_max,
                     ambitions = None

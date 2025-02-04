@@ -221,8 +221,8 @@ def plot_system_curve(
     fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=4)
     
     # Export
-    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{threshold}numdays.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{threshold}numdays.svg", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{threshold}timesteps.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{threshold}timesteps.svg", dpi=300, bbox_inches='tight')
 
     
 
@@ -235,6 +235,7 @@ def plot_saving_curve(
         typologies_name,
         typologies_demand, # List of typologies and yearly demand, from setup_batch.toml file.
         typologies_area, # List of typologies and surface area, from setup_batch.toml file.
+        timestep,
         T_return_list = [1,2,5,10],
         reservoir_max = None,
         ambitions = None, # List of desired reduction lines (in %)
@@ -242,7 +243,7 @@ def plot_saving_curve(
     if ambitions and type(ambitions)!=list:
         raise ValueError("Provide ambitions as list of percentages")
     
-    df_vars = func_fitting(system_fn, T_return_list)
+    df_vars = func_fitting(system_fn)
     
     cmap_list = [cmap_g1, cmap_g2, cmap_g3, cmap_g4]
     
@@ -260,22 +261,17 @@ def plot_saving_curve(
     # Create plot
     for i, typology in enumerate(typologies_name):
         cmap_i = cmap_list[i]
-        #columns = system_fn.columns[1:]
-        #columns = [int(col) for col in system_fn.iloc[:, 1:]]
         df_graph = pd.DataFrame(columns = T_return_list)
         df_graph['proc'] = np.arange(0,1.001,0.001)
-        df_graph['demand'] = df_graph['proc'] * typologies_demand[i]
+        df_graph['demand'] = (df_graph['proc'] * typologies_demand[i])# / (365* (86400 / timestep)) # TODO: improve Transform from yearly_demand to timestep_demand
         
-        # Filling df_graph with values for tank size i.r.t. yearly demands. Calculating back to m3 using surface area.
+        # Filling df_graph with values for tank size i.r.t. yearly demands. Calculating back to m3 using surface area if requested.
         for j, col in enumerate(T_return_list):
+            #TODO: make m3 optional
             df_graph[col] = (func_system_curve_inv(df_graph["demand"],
                                                                   df_vars.loc[str(col), "a"],
                                                                   df_vars.loc[str(col), "b"],
-                                                                  df_vars.loc[str(col), "n"]) / 1000) * typologies_area[i]
-            df_graph[col] = (func_system_curve_inv(df_graph["demand"],
-                                                                  df_vars.loc[str(col), "a"],
-                                                                  df_vars.loc[str(col), "b"],
-                                                                  df_vars.loc[str(col), "n"]) / 1000) * typologies_area[i]
+                                                                  df_vars.loc[str(col), "b"]) / 1000) * typologies_area[i]
            
         # Plotting curves
         for i, col in enumerate(T_return_list):
@@ -301,5 +297,5 @@ def plot_saving_curve(
     fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(typologies_name))
     
     # Export
-    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{threshold}numdays.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{threshold}numdays.svg", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{threshold}timesteps.png", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{threshold}timesteps.svg", dpi=300, bbox_inches='tight')

@@ -78,18 +78,15 @@ def return_period(
 
 def func_fitting(
         system_fn, # Path to saved system file
-        T_return_list = [1,2,5,10,20,50,100]
     ):
     # Reset index for df_system
     df_system = system_fn.reset_index(drop=True)
     
     df_vars = pd.DataFrame(columns=["a", "b", "n"])
-    #df_vars["Treturn"] = T_return_list
     df_vars["Treturn"] = df_system.columns[1:]
     df_vars = df_vars.set_index("Treturn")
     
     # Loop over different return periods to obtain variables in asymptotic function
-    #for i, col in enumerate(T_return_list):
     for col in df_system.columns[1:]:
         # Determine initial conditions
         # Check https://stackoverflow.com/questions/45554107/asymptotic-regression-in-python for assumptions
@@ -97,7 +94,6 @@ def func_fitting(
         b0 = df_system.iloc[(df_system[col]-(a0 / 2)).abs().argsort()[:1]].reservoir_cap
         n0 = 1.
         p0 = [a0, float(b0.iloc[0]), n0]
-        #p0 = [float(a0), float(b0), float(n0)]
         
         # Curve fit using Scipy
         popt, pcov = curve_fit(func_system_curve, df_system['reservoir_cap'], df_system[col], p0=p0)
