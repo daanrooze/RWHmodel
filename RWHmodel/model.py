@@ -224,7 +224,7 @@ class Model(object):
     ):
         # Batch run function to obtain solution space and statistics on output.
         # Initiate progress bar
-        pbar = tqdm(total = self.config["dem_max"] * self.config["cap_max"], desc="Processing", unit="iter")
+        pbar = tqdm(total = self.config["dem_step"] * self.config["cap_step"], desc="Processing", unit="iter")
         
         # Check arguments
         methods = ["total_timesteps", "consecutive_timesteps"]
