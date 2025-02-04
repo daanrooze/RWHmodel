@@ -202,7 +202,7 @@ def plot_system_curve(
         if validation:
             plt.scatter(system_fn['reservoir_cap'], system_fn[str(col)], label=f'Raw data T{col}', color=cmap[i % len(cmap)], alpha=0.4, s=25, marker='x')
     
-    y_max = np.round(np.max(y_values), 0)
+    y_max = np.max(y_values)
     plt.axis([0, x_max, 0, y_max])  # Set axis limits
     
     # Obtain colloquial timestep for x-axis
