@@ -182,7 +182,7 @@ def plot_system_curve(
     else:
         plot_name = ""
 
-    df_vars = func_fitting(system_fn, T_return_list)
+    df_vars = func_fitting(system_fn)
     
     # Define maximum specific water demand (x-axis bounds)
     x_max = np.max(system_fn)
