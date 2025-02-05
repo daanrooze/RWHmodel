@@ -295,6 +295,7 @@ class Model(object):
                     df_coverage.loc[reservoir_cap, demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
             
             if method:
+                # Calculate return periods based on events
                 df_deficit_events_total['T_return'] = self.forcing.num_years / (df_deficit_events_total.index + 1)
                 deficit_events_T_return = return_period(df_deficit_events_total, self.config["T_return_list"])
                 
