@@ -184,8 +184,8 @@ def plot_system_curve(
 
     df_vars = func_fitting(system_fn)
     
-    # Define maximum specific water demand (x-axis bounds)
-    x_max = np.max(system_fn)
+    # Define maximum x-range based on the maximum calculated reservoir size (x-axis bounds)
+    x_max = np.max(system_fn['reservoir_cap'].max())
     x_range = np.arange(0.01,x_max,1).astype('float64')
     
     # Create plot
@@ -271,7 +271,7 @@ def plot_saving_curve(
             df_graph[col] = (func_system_curve_inv(df_graph["demand"],
                                                                   df_vars.loc[str(col), "a"],
                                                                   df_vars.loc[str(col), "b"],
-                                                                  df_vars.loc[str(col), "b"]) / 1000) * typologies_area[i]
+                                                                  df_vars.loc[str(col), "n"]) / 1000) * typologies_area[i]
            
         # Plotting curves
         for i, col in enumerate(T_return_list):
