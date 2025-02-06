@@ -71,7 +71,7 @@ def plot_meteo(
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_forcing_{plot_name}_{t_start.year}_{t_start.month}-{t_end.year}_{t_end.month}.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_forcing_{plot_name}_{t_start.year}_{t_start.month}-{t_end.year}_{t_end.month}.svg", dpi=300, bbox_inches='tight')
+    #fig.savefig(f"{root}/output/figures/{name}_forcing_{plot_name}_{t_start.year}_{t_start.month}-{t_end.year}_{t_end.month}.svg", dpi=300, bbox_inches='tight')
 
 def plot_run(
         root,
@@ -120,7 +120,7 @@ def plot_run(
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr-demand={yearly_demand}.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr-demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
+    #fig.savefig(f"{root}/output/figures/{name}_run_reservoir={reservoir_cap}_yr-demand={yearly_demand}.svg", dpi=300, bbox_inches='tight')
 
 
 def plot_run_coverage(
@@ -165,7 +165,7 @@ def plot_run_coverage(
     plt.grid(visible=True, which="major", color="white", linestyle="-", alpha=0.2)
     
     fig.savefig(f"{root}/output/figures/{name}_run_coverage.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_run_coverage.svg", dpi=300, bbox_inches='tight')
+    #fig.savefig(f"{root}/output/figures/{name}_run_coverage.svg", dpi=300, bbox_inches='tight')
 
 
 def plot_system_curve(
@@ -222,7 +222,7 @@ def plot_system_curve(
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{threshold}timesteps.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{threshold}timesteps.svg", dpi=300, bbox_inches='tight')
+    #fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{threshold}timesteps.svg", dpi=300, bbox_inches='tight')
 
     
 
@@ -299,4 +299,4 @@ def plot_saving_curve(
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_savings_curve_{threshold}timesteps.png", dpi=300, bbox_inches='tight')
-    fig.savefig(f"{root}/output/figures/{name}_savings_curve_{threshold}timesteps.svg", dpi=300, bbox_inches='tight')
+    #fig.savefig(f"{root}/output/figures/{name}_savings_curve_{threshold}timesteps.svg", dpi=300, bbox_inches='tight')

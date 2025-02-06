@@ -375,6 +375,7 @@ class Model(object):
             if fn:
                 fn = pd.read_csv(fn, sep=',')
             else:
+                #fn = self.results
                 fn = pd.read_csv(f"{self.root}/output/runs/{self.name}_run_res-cap={np.round(self.reservoir.reservoir_cap,1)}_yr-dem={np.round(self.demand.yearly_demand, 1)}.csv", sep=',')
             
             plot_run(
