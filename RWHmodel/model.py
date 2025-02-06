@@ -347,6 +347,7 @@ class Model(object):
         validation: Optional[str] = None,
         reservoir_max: Optional[int] = None,
         unit: Optional[str] = None,
+        ambitions: Optional[list] = None,
         **kwargs
     ):
         plot_types = ["meteo", "run", "run_coverage", "system_curve", "saving_curve"]
@@ -450,5 +451,5 @@ class Model(object):
                     timestep = timestep,
                     T_return_list = T_return_list,
                     reservoir_max = reservoir_max,
-                    ambitions = None
+                    ambitions = ambitions
                 )

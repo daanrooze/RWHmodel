@@ -267,12 +267,11 @@ def plot_saving_curve(
         
         # Filling df_graph with values for tank size i.r.t. yearly demands. Calculating back to m3 using surface area if requested.
         for j, col in enumerate(T_return_list):
-            #TODO: make m3 optional
             df_graph[col] = func_system_curve_inv(df_graph["demand"],
                                                                   df_vars.loc[str(col), "a"],
                                                                   df_vars.loc[str(col), "b"],
                                                                   df_vars.loc[str(col), "n"])
-            if unit == 'm3':
+            if unit == 'm3': # Calculate df_graph back to m3
                 df_graph[col] = (df_graph[col] / 1000) *typologies_area[i]
            
         # Plotting curves
@@ -283,7 +282,7 @@ def plot_saving_curve(
         if ambitions:
             for ambition in ambitions:
                 ax.axvline(x = ambition, color = '#afafaf', linestyle='--', linewidth=1, zorder = 3)
-                ax.text(ambition-1, 15, f"{ambition}% reductie", ha="center", va="bottom", color = 'grey', rotation=90)
+                ax.text(ambition-1, 15, f"{ambition}% reduction", ha="center", va="bottom", color = 'grey', rotation=90)
     
     # Layout and grid
     ax.spines.right.set_visible(False)
