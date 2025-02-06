@@ -268,10 +268,12 @@ def plot_saving_curve(
         # Filling df_graph with values for tank size i.r.t. yearly demands. Calculating back to m3 using surface area if requested.
         for j, col in enumerate(T_return_list):
             #TODO: make m3 optional
-            df_graph[col] = (func_system_curve_inv(df_graph["demand"],
+            df_graph[col] = func_system_curve_inv(df_graph["demand"],
                                                                   df_vars.loc[str(col), "a"],
                                                                   df_vars.loc[str(col), "b"],
-                                                                  df_vars.loc[str(col), "n"]) / 1000) * typologies_area[i]
+                                                                  df_vars.loc[str(col), "n"])
+            if unit == 'm3':
+                df_graph[col] = (df_graph[col] / 1000) *typologies_area[i]
            
         # Plotting curves
         for i, col in enumerate(T_return_list):
@@ -291,7 +293,7 @@ def plot_saving_curve(
     
     # Axes labels
     ax.set_xlabel('Reduction in demand [%]')
-    ax.set_ylabel('Required reservoir size [m3]')
+    ax.set_ylabel(f'Required reservoir size [{unit}]')
     
     # Legend
     fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(typologies_name))

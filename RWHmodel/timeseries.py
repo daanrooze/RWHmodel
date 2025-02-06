@@ -168,7 +168,6 @@ class Demand(TimeSeries):
             self.t_start = pd.to_datetime(self.t_start) if self.t_start is not None else forcing_fn.index.min()
             self.t_end = pd.to_datetime(self.t_end) if self.t_end is not None else forcing_fn.index.max()
 
-        self.unit = unit
         if unit == "m3":  # Convert to mm
             if surface_area := setup_fn["srf_area"]:
                 self.data = convert_m3_to_mm(

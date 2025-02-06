@@ -346,6 +346,7 @@ class Model(object):
         T_return_list: Optional[int] = None,
         validation: Optional[str] = None,
         reservoir_max: Optional[int] = None,
+        unit: Optional[str] = None,
         **kwargs
     ):
         plot_types = ["meteo", "run", "run_coverage", "system_curve", "saving_curve"]
@@ -420,8 +421,11 @@ class Model(object):
                 fn = self.statistics
             
             if T_return_list is None:
-                   T_return_list = self.config['T_return_list']
+                T_return_list = self.config['T_return_list']
             
+            if unit is None:
+                unit = self.unit
+
             if plot_type == "system_curve":
                 plot_system_curve(
                     root = self.root,
@@ -437,7 +441,7 @@ class Model(object):
                 plot_saving_curve(
                     root = self.root,
                     name = self.name,
-                    unit = self.unit,
+                    unit = unit,
                     system_fn = fn,
                     threshold = self.config['threshold'],
                     typologies_name = self.config['typologies_name'],

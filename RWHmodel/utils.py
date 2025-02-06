@@ -55,7 +55,7 @@ def check_variables(mode, config, demand_transformation):
         ]
     if mode == "batch":
         variables = [
-            'threshold', 'T_return_list', 'int_cap', 'typologies_name',
+            'srf_area', 'threshold', 'T_return_list', 'int_cap', 'typologies_name',
             'typologies_demand', 'typologies_area', 'shift', 'perc_constant'
         ]
 
