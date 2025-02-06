@@ -210,7 +210,7 @@ def plot_system_curve(
     
     # Axes labels
     ax.set_xlabel('Specific reservoir capacity [mm]')
-    ax.set_ylabel(f'Specific water demand [mm/{timestep_txt}]')
+    ax.set_ylabel(f'Specific water demand [mm/year]') #TODO: change y-axis to mm/timestep?
     
     # Layout and grid
     ax.spines.right.set_visible(False)
@@ -218,7 +218,7 @@ def plot_system_curve(
     plt.grid(visible=True, which="major", color="black", linestyle="-", alpha=0.2)
     
     # Legend
-    fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(T_return_list)) #TODO: change ncol to variable based on len(T-return-list)
+    fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(T_return_list))
     
     # Export
     fig.savefig(f"{root}/output/figures/{name}_system_curve_{plot_name}{threshold}timesteps.png", dpi=300, bbox_inches='tight')
