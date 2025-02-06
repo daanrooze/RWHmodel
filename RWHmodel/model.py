@@ -326,7 +326,7 @@ class Model(object):
             self.statistics = df_system
 
             # Save df_system to csv
-            df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run_{method}.csv", index=False)
+            df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run.csv", index=False)
         
         df_coverage = df_coverage.reset_index(drop=False)
         self.results_summary = df_coverage
@@ -372,14 +372,10 @@ class Model(object):
             )
         
         if plot_type == "run":
-            if not hasattr(self, 'results') and not fn:
-                raise ValueError(
-                    f"Run model or load in previous batch run results to plot {plot_type}."
-                )
             if fn:
                 fn = pd.read_csv(fn, sep=',')
             else:
-                fn = self.results
+                fn = pd.read_csv(f"{self.root}/output/runs/{self.name}_run_res-cap={np.round(self.reservoir.reservoir_cap,1)}_yr-dem={np.round(self.demand.yearly_demand, 1)}.csv", sep=',')
             
             plot_run(
                 root = self.root,
@@ -394,14 +390,10 @@ class Model(object):
             )
     
         if plot_type == "run_coverage":
-            if not hasattr(self, 'results_summary') and not fn:
-                raise ValueError(
-                    f"Run model or load in previous batch run results to plot {plot_type}."
-                )
             if fn:
                 fn = pd.read_csv(fn, sep=',')
             else:
-                fn = self.results_summary
+                fn = pd.read_csv(f"{self.root}/output/runs/summary/{self.name}_batch_run_coverage_summary.csv", sep=',')
                 
             plot_run_coverage(
                 root = self.root,
@@ -412,14 +404,10 @@ class Model(object):
             )
         
         if plot_type in ["system_curve", "saving_curve"]:
-            if not hasattr(self, 'statistics') and not fn:
-                raise ValueError(
-                    f"Perform batch run or load in previous batch run results to plot {plot_type}."
-                )
             if fn:
                 fn = pd.read_csv(fn, sep=',')
             else:
-                fn = self.statistics
+                fn = pd.read_csv(f"{self.root}/output/statistics/{self.name}_batch_run.csv", sep=',')
             
             if T_return_list is None:
                 T_return_list = self.config['T_return_list']
