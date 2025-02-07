@@ -77,7 +77,6 @@ def plot_run(
         root,
         name,
         run_fn, # Path to run output file
-        demand_fn,
         unit,
         t_start,
         t_end,
@@ -85,7 +84,7 @@ def plot_run(
         yearly_demand
     ):
     df_run = run_fn
-    df_demand = demand_fn
+
     # Create plot
     fig, ax1 = plt.subplots(1, figsize=(14,6))
     ax2 = ax1.twinx()
@@ -96,7 +95,7 @@ def plot_run(
     ax2.plot(df_run.index, df_run['reservoir_stor'], linewidth=1, linestyle='-',
              label = 'Reservoir storage', color='#080c80') 
     ax1.fill_between(df_run.index, y1=df_run['deficit'], y2=0, label = 'Deficit' , color='#be1e2d', alpha=0.35, edgecolor='none')
-    ax1.plot(df_demand.index, df_demand['demand'], linewidth=1, linestyle='-',
+    ax1.plot(df_run.index, df_run['demand'], linewidth=1, linestyle='-',
              label = 'Demand', color='#ff960d')
     
     # Axes labels
@@ -107,7 +106,7 @@ def plot_run(
     # Axes limits
     ax2.set_ylim([0, df_run['reservoir_stor'].max() * 1.1])
     ax2.set_xlim([t_start, t_end])
-    ax1.set_ylim([0, df_demand['demand'].max() * 1.1])
+    ax1.set_ylim([0, df_run['demand'].max() * 1.1])
     ax1.set_xlim([t_start, t_end])
     
     # Layout and grid

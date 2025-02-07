@@ -183,6 +183,7 @@ class Model(object):
         df_data = {
             'reservoir_stor': reservoir_stor,
             'reservoir_overflow': reservoir_overflow,
+            'demand': demand_array.to_numpy(), # First convert pandas.Series to numpy.ndarray
             'deficit': deficit,
             'deficit_timesteps': deficit_timesteps}
         df = pd.DataFrame(df_data, index = self.forcing.data['precip'].index)
@@ -191,6 +192,7 @@ class Model(object):
         if self.unit == "m3":
             df = convert_mm_to_m3(df = df, col = "reservoir_stor", surface_area = self.config["srf_area"])
             df = convert_mm_to_m3(df = df, col = "reservoir_overflow", surface_area = self.config["srf_area"])
+            df = convert_mm_to_m3(df = df, col = "demand", surface_area = self.config["srf_area"])
             df = convert_mm_to_m3(df = df, col = "deficit", surface_area = self.config["srf_area"])
             self.demand.data = convert_mm_to_m3(df = self.demand.data, col = "demand", surface_area = self.config["srf_area"])
         
@@ -278,14 +280,14 @@ class Model(object):
                     if method == "consecutive_timesteps": 
                         df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
                         df_deficit_events = df_deficit_events.reset_index(drop=True)
-                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{self.demand.yearly_demand}'}) #TODO: yearly_demand was 'demand'
+                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{self.demand.yearly_demand}'})
                     if method == "total_timesteps": 
                         df_run = df_run.resample('YE').sum()
                         df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
                         df_deficit_events = df_deficit_events.reset_index(drop=True)
-                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{self.demand.yearly_demand}'}) #TODO: yearly_demand was 'demand'
+                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{self.demand.yearly_demand}'})
                         
-                    df_deficit_events_total = pd.concat([df_deficit_events_total, df_deficit_events[[f'{self.demand.yearly_demand}']]], axis=1) #TODO: yearly_demand was 'demand'
+                    df_deficit_events_total = pd.concat([df_deficit_events_total, df_deficit_events[[f'{self.demand.yearly_demand}']]], axis=1)
                 
                 # Calculate coverage
                 total_demand_sum = self.demand.data['demand'].sum()
@@ -375,14 +377,16 @@ class Model(object):
             if fn:
                 fn = pd.read_csv(fn, sep=',')
             else:
-                #fn = self.results
-                fn = pd.read_csv(f"{self.root}/output/runs/{self.name}_run_res-cap={np.round(self.reservoir.reservoir_cap,1)}_yr-dem={np.round(self.demand.yearly_demand, 1)}.csv", sep=',')
+                if not hasattr(self, 'statistics') and not fn:
+                    raise ValueError(
+                        f"Run the model or load previous run to plot results."
+                    )
+                fn = self.results
             
             plot_run(
                 root = self.root,
                 name = self.name,
                 run_fn = fn,
-                demand_fn = self.demand.data,
                 unit = self.unit,
                 t_start = t_start,
                 t_end = t_end,
