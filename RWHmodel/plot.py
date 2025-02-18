@@ -142,9 +142,7 @@ def plot_run_coverage(
         x_labels = x_labels[::len(x_labels) // 20]
     
     cmap = ['#e63946', '#ff960d', '#00b389', '#0ebbf0', '#080c80']  # Inverted color map
-    
     cmap = mcolors.ListedColormap(cmap)
-    
     norm = mcolors.BoundaryNorm(class_boundaries, cmap.N)
     
     fig, ax1 = plt.subplots(1, figsize=(14, 6))
@@ -153,7 +151,7 @@ def plot_run_coverage(
     
     timestep_txt = colloquial_date_text(timestep)
     
-    plt.xlabel(f'Specific demand [{unit}/{timestep_txt}]')
+    plt.xlabel(f'Specific demand [{unit}/year]')
     plt.ylabel(f'Specific reservoir capacity [{unit}]')
     
     cbar = plt.colorbar(c, label='Yearly demand coverage by reservoir (%)')

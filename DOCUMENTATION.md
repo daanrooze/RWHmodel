@@ -37,75 +37,103 @@ To make the model broadly applicable, it is designed to work with any hard surfa
 
 
 
-# Quick-start and example Use Cases
+# Quick-Start and Example Use Cases
 ## Getting started
 For basic usage of the tool, follow these steps:
 1. Download or clone the repository containing the model to your local machine.
 2. Install the model using the instructions provided in the Installation Guide section of this document.
-3. Create a project folder (e.g., for a case study in India) and provide the required input data, including local climate data (precipitation and potential evapotranspiration), reservoir characteristics, and area-specific details. If local climate data is unavailable, users can use the ['hydromt_uwbm'](https://github.com/Deltares-research/hydromt_uwbm) plugin for the [hydromt framework](https://deltares.github.io/hydromt/latest/) to generate timeseries based on global climate datasets such as ERA5.
+3. Create a project folder (e.g., for a case study in India) and provide the required input data, including local climate data (precipitation and potential evapotranspiration), reservoir characteristics, and area-specific details. If local climate data is unavailable, users can use the [hydromt_uwbm](https://github.com/Deltares-research/hydromt_uwbm) plugin for the [hydromt framework](https://deltares.github.io/hydromt/latest/) to generate timeseries based on global climate datasets such as ERA5.
 4. Run the model for your specific case study by using the installed model from the project directory. Model results, figures, and statistics will be saved in the /output folder in the project directory.
 
 ## Use cases
-### Single, simple model run
-If the user wants to run a single simulation, to instance to assess the performance of a particular system, the first step is to initiate the model:
+### Example: single model run
+If the user wants to run a single simulation, to instance to assess the dynamics of a particular irrigation system, the first step is to correctly set up the **setup.toml** file with general characteristics.
+
+The next step is to initiate the model with the given parameters as arguments:
+- **root**: Root folder for the model case.
+- **name**: Unique name to identify model runs.
+- **setup_fn**: Path to setup.toml file that specifies generic characteristics of this single model run.
+- **forcing_fn**: Path to forcing.csv file containing precipitation and PET timeseries.
+- **demand_fn**: Path to demand.csv file.
+- **reservoir_initial_state**: To prevent a dry reservoir at the start of the simulation, the reservoir is set to be filled to 75% of its capacity.
+- **timestep**: Model timestep is 1 day (86400 seconds).
+- **unit**: Calculation unit for the reservoir size and demand per timestep, in this case ‘mm’.
+
 ```
 import RWHmodel
 
 model = RWHmodel.Model(
         root = r"C:\Users\example_case",
-        name = "example_case",
+        name = "irrigation_simulation",
         setup_fn = r"C:\Users\example_case\input\setup_single_run.toml",
-        forcing_fn = r"C:\Users\example_case\input\forcing_test.csv",
-        demand_fn = r"C:\Users\example_case\input\demand_test.csv",
-        demand_transform = False,
+        forcing_fn = r"C:\Users\example_case\input\forcing_daily.csv",
+        demand_fn = r"C:\Users\example_case\input\demand_daily.csv",
         reservoir_initial_state = 0.75,
         timestep = 86400,
         unit = "mm"
         )
 ```
-Arguments:
-- **root**: Root folder for the model case.
-- **name**: Unique name to identify model runs.
-- **setup_fn**: Path to setup.toml file that specifies generic characteristics.
-- **forcing_fn**: Path to forcing.csv file containing precipitation and PET timeseries.
-- **demand_fn**: Path to demand.csv file, singular value or list with Numpy.linspace arguments.
-- **demand_transform**: Boolean to specify whether non-timeseries demand argument should be transformed with seasonal dynamics.
-- **reservoir_range**: List with Numpy.linspace arguments to specify range of reservoirs to be modelled.
-- **reservoir_initial_state**: Fraction of the reservoir capacity that is filled on the first timestep.
-- **timestep**: Timestep length in seconds: 3600 or 86400 seconds (optional, default is taken from forcing timeseries).
-- **t_start**: Start time to clip the timeseries for modelling (optional).
-- **t_end**: End time to clip the timeseries for modelling (optional).
-- **unit**: Calculation unit for the reservoir size and demand per timestep: ‘mm’ or ‘m3’ (optional, default = ‘mm’). Ensure that both reservoir and demand timeseries are in the same and correct unit.
-
 
 Call the run function using the following command:
 ```
 model.run()
 ```
-Arguments:
-- **save**: Boolean to specify whether the run output should be saved to .csv (optional, default = True)
-
 Model run results are stored in: **root/output/runs**
 
-
-### Batch model run
-A batch run allows the user to run a “scenario-space” of possible demand patterns and reservoir sizes. 
+Plot model results using the following command:
 ```
+model.plot(plot_type="run")
+```
+Figure plots are stored in: **root/output/figures**
+### Example: batch model run
+A batch run allows the user to run a “scenario-space” of possible demand patterns and reservoir sizes. Individual model results can be saved to .csv; the ‘coverage’ table showing how much of the *total* water demand can be supplied for each reservoir-demand combination is saved to .csv automatically.
+
+In order to run a batch run, for instance to assess the potential of rainwater harvesting for an industrial complex, the first step is to correctly set up the **setup.toml** file with general characteristics.
+
+The next step is to initiate the model with the given parameters as arguments:
+- **root**: Root folder for the model case.
+- **name**: Unique name to identify model runs.
+- **setup_fn**: Path to setup.toml file that specifies generic characteristics of this single model run.
+- **forcing_fn**: Path to forcing.csv file containing precipitation and PET timeseries.
+- **demand_fn**: Range of hourly demands to be considered, minimum is 0.1 m3/h, maximum is 1 m3/h, with 150 equal steps in between.
+- **reservoir_range**: Range of reservoir sizes to be considered, minimum is 10 m3, maximum is 1000 m3, with 150 equal steps in between.
+- **reservoir_initial_state**: To prevent a dry reservoir at the start of the simulation, the reservoir is set to be filled to 75% of its capacity.
+- **timestep**: Model timestep is 1 hour (3600 seconds).
+- **unit**: Calculation unit for the reservoir size and demand per timestep, in this case ‘m3’.
+
+```
+import RWHmodel
+
 model = RWHmodel.Model(
         root = r"C:\Users\example_case",
-        name = "example_case",
+        name = "industrial_reuse",
         setup_fn = r"C:\Users\example_case\input\setup_batch_run.toml",
-        forcing_fn = r"C:\Users\example_case\input\forcing_test.csv",
-        demand_fn = [0.5, 5, 10],
-        demand_transform = False,
-        reservoir_range = [10, 200, 10],
+        forcing_fn = r"C:\Users\example_case\input\forcing_hourly.csv",
+        demand_fn = [0.1, 1, 150],
+        reservoir_range = [10, 1000, 150],
         reservoir_initial_state = 0.75,
-        timestep = 86400,
-        unit = "mm"
+        timestep = 3600,
+        unit = "m3"
         )
 ```
 
+For this exercise, we are interested in the amount of consecutive days that the reservoir does not suffice for the given demand. This is the ‘threshold’ specified in the **setup_batch_run.toml** file.
 
+Call the batch run function using the following command,  :
+```
+model.batch_run(method=’consecutive_timesteps’)
+```
+The ‘coverage summary’ results are stored in: **root/output/runs/summary**
+The ‘system characteristics’, using an extreme value approach and the specified return period,  are stored in: **root/output/runs/statistics**
+
+Plot the coverage summary, system curve and potential savings curve using the following commands:
+```
+model.plot(plot_type="run_coverage")
+model.plot(plot_type="system_curve")
+model.plot(plot_type="saving_curve")
+```
+
+Figure plots are stored in: **root/output/figures**
 ### Plotting
 The tool provides basic plotting of input forcing, model results, and some analyses. Based on the saved model output, users are free to tailor plotting functions according to their needs.
 
@@ -161,8 +189,48 @@ To plot the “savings-curve”, using specified return period list, plotting un
 model.plot(plot_type="saving_curve", T_return_list=[1,2,5,10], unit='m3', reservoir_max=20, ambitions=[15, 30, 65])
 ```
 
+## Function documentation
+This section describes all mandatory and optional user arguments for the Python interface of the model.
+### Initializing the model
+The model is initialized by calling the **.Model** class within the RWHmodel package.
+```
+import RWHmodel
+model = RWHmodel.Model()
+```
 
-# Model Description
+The initialization function takes the following arguments:
+- **root**: Required. Root folder for the model case.
+- **name**: Required. Unique name to identify model runs.
+- **setup_fn**: Required. Path to setup.toml file that specifies generic characteristics. Single runs and batch runs require different parameters in the setup.toml file in order to run.
+- **forcing_fn**: Required. Path to forcing.csv file containing precipitation and PET timeseries.
+- **demand_fn**: Required. Choose between 1) path to demand.csv file, 2) singular value [unit/timestep] or 3) list with Numpy.linspace arguments (for batch run).
+- **demand_transform**: Optional, default is False. Boolean to specify whether non-timeseries demand argument should be transformed with a generic, sinusoid seasonal dynamic.
+- **reservoir_range**: Required for batch run only. List with Numpy.linspace arguments to specify range of reservoirs to be modelled.
+- **reservoir_initial_state**: Optional, default is 0. Fraction of the reservoir capacity that is filled on the first timestep.
+- **timestep**: Optional, default is derived from the forcing timeseries. Timestep length in seconds: 3600 or 86400 seconds.
+- **t_start**: Optional, default is first timestep of forcing timeseries. Start time to clip the timeseries for modelling.
+- **t_end**: Optional, default is final timestep of forcing timeseries. End time to clip the timeseries for modelling.
+- **unit**: Optional, default is ‘mm’. Calculation unit for the reservoir size and demand per timestep: ‘mm’ or ‘m3’. Ensure that both reservoir and demand timeseries are in the same and correct unit.
+### Single run
+To perform a single model run, call the **run** function.
+```
+model.run()
+```
+
+The **run** function takes the following argument:
+- **save**: Boolean to specify whether the run output should be saved to .csv (optional, default = True)
+### Batch run
+To perform a batch model run, call the **batch_run** function.
+```
+model.batch_run()
+```
+
+The **batch_run** function takes the following arguments:
+- **method**: Optional, default = None. Specifies the desired threshold type to be considered in the statistical calculations. Choose between 1) ‘consecutive_days’ or 2) ‘total_days’.
+- **log**: Optional, default = False. Boolean to toggle terminal text printing for each iteration.
+- **save**: Optional, default = False. Boolean to toggle individual saving of every model iteration (to .csv).
+
+# Model Documentation
 
 The computational model used consists of two sub-models that operate sequentially in the process.
 ## Model 1: Runoff Model

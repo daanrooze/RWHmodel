@@ -124,8 +124,8 @@ class Demand(TimeSeries):
         self,
         root: str,
         demand_fn: str,
-        demand_transform: bool,
         forcing_fn: str,
+        demand_transform: Optional[bool] = False,
         timestep: Optional[int] = None,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
@@ -138,36 +138,34 @@ class Demand(TimeSeries):
             fn=demand_fn, root=root, timestep=timestep, t_start=t_start, t_end=t_end
         )
         
+        # Check if seasonal transformation can be applied
+        if type(demand_fn)==str and demand_transform==True:
+                    raise ValueError(
+                        "Can only apply generic sinusoid seasonal variation to singular yearly demand figures."
+        )
         # Set self.transform if demand timeseries transformation is True
         self.transform = demand_transform
         if self.transform:
             self.perc_constant = perc_constant
             self.shift = shift
         
-        if isinstance(demand_fn, (int, float)):
-            forcing_fn["demand"] = float(demand_fn) # Use forcing timeseries to fill demand timeseries
-            self.data = forcing_fn[["demand"]]
-            self.fn = float
-            self.num_years = (max(forcing_fn.index) - min(forcing_fn.index)) / (np.timedelta64(1, "W") * 52)
-            self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
-            self.t_start = pd.to_datetime(self.t_start) if self.t_start is not None else forcing_fn.index.min()
-            self.t_end = pd.to_datetime(self.t_end) if self.t_end is not None else forcing_fn.index.max()
-        if isinstance(demand_fn, str):
+        if isinstance(demand_fn, str): # Call read_timeseries function if given a timeseries file.
             self.data = self.read_timeseries(
                 file_type="csv",
                 required_headers=["datetime", "demand"],
                 numeric_cols=["demand"],
                 timestep=timestep,
             )
-        if isinstance(demand_fn, list):
-            forcing_fn["demand"] = float(demand_fn[0]) # Use forcing timeseries to fill demand timeseries
-            self.data = forcing_fn[["demand"]] 
-            self.fn = list
+        
+        if isinstance(demand_fn, (int, float, list)): # Use forcing timeseries to fill demand timeseries
+            forcing_fn["demand"] = float(demand_fn[0]) if isinstance(demand_fn, list) else float(demand_fn)
+            self.data = forcing_fn[["demand"]]
+            self.fn = list if isinstance(demand_fn, list) else float
             self.num_years = (max(forcing_fn.index) - min(forcing_fn.index)) / (np.timedelta64(1, "W") * 52)
             self.timestep = int((self.data.index[1] - self.data.index[0]).total_seconds())
             self.t_start = pd.to_datetime(self.t_start) if self.t_start is not None else forcing_fn.index.min()
             self.t_end = pd.to_datetime(self.t_end) if self.t_end is not None else forcing_fn.index.max()
-
+        
         if unit == "m3":  # Convert to mm
             if surface_area := setup_fn["srf_area"]:
                 self.data = convert_m3_to_mm(
@@ -200,8 +198,16 @@ class Demand(TimeSeries):
         Args:
             update_data (pd.Series or pd.DataFrame): New demand data to replace the current demand.
         """
-        self.data.loc[:, "demand"] = update_data
-        
+        if isinstance(update_data, (int, float)):
+            self.data.loc[:, "demand"] = update_data
+        if isinstance(update_data, str):
+            self.data = self.read_timeseries(
+                file_type="csv",
+                required_headers=["datetime", "demand"],
+                numeric_cols=["demand"],
+                timestep=self.timestep,
+            )
+
         # Recalculate yearly_demand
         self.yearly_demand = np.round(float((self.data["demand"].sum()) / self.num_years), 1)
         

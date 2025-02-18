@@ -5,13 +5,13 @@ import pandas as pd
 import codecs
 import toml
 from tqdm import tqdm
+from pathlib import Path
 
 from RWHmodel.reservoir import Reservoir
 from RWHmodel.timeseries import Demand, Forcing
 from RWHmodel.hydro_model import HydroModel
 from RWHmodel.utils import makedir, check_variables, convert_mm_to_m3, colloquial_date_text
 from RWHmodel.analysis import return_period
-
 from RWHmodel.plot import plot_meteo, plot_run, plot_run_coverage, plot_system_curve, plot_saving_curve
 
 
@@ -39,14 +39,8 @@ class Model(object):
         for folder in ['input', 'output', 'output/figures', 'output/runs', 'output/runs/summary', 'output/statistics']:
             makedir(os.path.join(self.root, folder))
         
-        # Check if seasonal transformation can be applied
-        if type(demand_fn)==str and demand_transform==True:
-                    raise ValueError(
-                        "Cannot transpose timeseries with seasonal variation."
-        )
-
-        # Set model mode default to 'single'. Overrides to 'batch' if demand_fn is of type list.
-        if type(demand_fn)==list:
+        # Set model mode default to 'single'. Overrides to 'batch' if demand_fn is of type list or folder with files.
+        if type(demand_fn)==list or (isinstance(demand_fn, (str, Path)) and Path(demand_fn).is_dir()):
             self.mode = 'batch'
         else: 
             self.mode = 'single'
@@ -59,6 +53,7 @@ class Model(object):
         else:
             raise ValueError("Provide model run name")
         
+        # Check supplied timestep
         if timestep is not None and timestep not in [3600, 86400]:
             raise ValueError("Provide model timestep in 3600 or 86400 seconds")
         
@@ -77,14 +72,22 @@ class Model(object):
             t_end = t_end
         )
         
-        # Setup demand if given
-        if type(demand_fn)==list:
-            self.config["dem_min"] = demand_fn[0]
-            self.config["dem_max"] = demand_fn[1]
-            if len(demand_fn) == 3:
-                self.config["dem_step"] = demand_fn[2]
-            else:
-                self.config["dem_step"] = 100  # Default number of steps = 100
+        if self.mode == 'batch':
+            # Setup demand range if given
+            if type(demand_fn)==list:
+                self.config["dem_min"] = demand_fn[0]
+                self.config["dem_max"] = demand_fn[1]
+                if len(demand_fn) == 3:
+                    self.config["dem_step"] = demand_fn[2]
+                else:
+                    self.config["dem_step"] = 100  # Default number of steps = 100
+                self.config["demand_lst"] = list(np.linspace(self.config["dem_min"], self.config["dem_max"], self.config["dem_step"]))
+            
+            # If given a folder with collection of demand timeseries, generate list of all demand files
+            if Path(demand_fn).is_dir():
+                self.config["demand_lst"] = [str(file) for file in Path(demand_fn).glob("*.csv")]
+                self.config["dem_step"] = len(self.config["demand_lst"])
+                demand_fn = self.config["demand_lst"][0] # Overwrite the demand_fn variable for the first item in the list.
 
         self.demand = Demand(
             root = root,
@@ -121,6 +124,7 @@ class Model(object):
                 self.config["cap_step"] = reservoir_range[2]
             else:
                 self.config["cap_step"] = 100  # Default number of steps = 100
+            self.config["capacity_lst"] = list(np.linspace(self.config["cap_min"], self.config["cap_max"], self.config["cap_step"]))
             # Set reservoir capacity for range
             self.config['reservoir_cap'] = self.config['cap_min']
         # Convert reservoir capacity to mm if unit set to "m3".
@@ -136,7 +140,10 @@ class Model(object):
             print("Warning: maximum demand is greater than the reservoir capacity.")
 
         # Initiate reservoir
-        self.reservoir = Reservoir(self.config['reservoir_cap'], reservoir_initial_state * self.config['reservoir_cap'])
+        self.reservoir = Reservoir(
+            self.config['reservoir_cap'],
+            reservoir_initial_state * self.config['reservoir_cap']
+        )
 
         
     def setup_from_toml(self, setup_fn):
@@ -236,11 +243,6 @@ class Model(object):
             raise ValueError(
                 "Ambiguous surface area. Unit conversion can only be used for a maximum of one surface area."
             )
-    
-        # Define demand range
-        demand_lst = list(np.linspace(self.config["dem_min"], self.config["dem_max"], self.config["dem_step"]))
-        # Create reservoir capacity range
-        capacity_lst = list(np.linspace(self.config["cap_min"], self.config["cap_max"], self.config["cap_step"]))
         
         if method:
             threshold = self.config["threshold"]
@@ -248,33 +250,48 @@ class Model(object):
             df_system = pd.DataFrame(columns=self.config["T_return_list"] + ['reservoir_cap'])
             
         # Initialize df_coverage to store summaries of coverage and deficit for each run.
-        df_coverage = pd.DataFrame(columns=demand_lst)
-        df_coverage['reservoir_cap'] = capacity_lst
+        df_coverage = pd.DataFrame()#columns=demand_lst)
+        df_coverage['reservoir_cap'] = self.config["capacity_lst"]
         df_coverage.set_index('reservoir_cap', inplace=True)
     
         # Loop through reservoir capacities in capacity_lst
-        for reservoir_cap in capacity_lst:
+        for reservoir_cap in self.config["capacity_lst"]:
             
             if method:
                 df_deficit_events_total = pd.DataFrame()
                 deficit_events_T_return = pd.DataFrame()
             
-            for demand in demand_lst:
-                # Update progress bar
-                pbar.update(1)
+            # Loop through demand timeseries in demand_lst
+            for demand in self.config["demand_lst"]:
 
-                # Re-initiate reservoir
-                self.reservoir = Reservoir(reservoir_cap, self.reservoir_initial_state * reservoir_cap)
+                # Re-initiate Reservoir for each run
+                self.reservoir = Reservoir(
+                    reservoir_cap,
+                    self.reservoir_initial_state * reservoir_cap
+                )
 
                 # Update timeseries, including seasonal transformation and yearly demand
-                Demand.update_demand(self.demand, update_data = demand)
-                
+                #Demand.update_demand(self.demand, update_data = demand) #TODO: remove and just re-initialize Demand?
+                # Re-initiate Demand
+                self.demand = Demand(
+                    root = self.root,
+                    demand_fn = demand,
+                    forcing_fn = self.forcing.data,
+                    unit = self.unit,
+                    setup_fn = self.config,
+                    perc_constant = self.config["perc_constant"],
+                    shift= self.config["shift"],
+                )
+
+                # Update progress bar and logging
+                pbar.update(1)
                 if log:
-                    timestep_txt = colloquial_date_text(self.forcing.timestep)
-                    print(f"Running with reservoir capacity {np.round(reservoir_cap, 2)} mm and demand {np.round(demand, 2)} mm/{timestep_txt}.")
-                
+                    print(f"Running with reservoir capacity {np.round(self.reservoir.reservoir_cap, 2)} mm and demand {np.round(self.demand.yearly_demand, 2)} mm/year.")
+
+                # Run the model
                 df_run = self.run(save=save)
                 
+                # Apply threshold analysis if given
                 if method:
                     df_deficit_events = pd.DataFrame()
                     if method == "consecutive_timesteps": 
@@ -292,9 +309,9 @@ class Model(object):
                 # Calculate coverage
                 total_demand_sum = self.demand.data['demand'].sum()
                 if np.isnan(total_demand_sum) or total_demand_sum == 0:
-                    df_coverage.loc[reservoir_cap, demand] = 1
+                    df_coverage.loc[reservoir_cap, self.demand.yearly_demand] = 1
                 else:
-                    df_coverage.loc[reservoir_cap, demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
+                    df_coverage.loc[reservoir_cap, self.demand.yearly_demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
             
             if method:
                 # Calculate return periods based on events
