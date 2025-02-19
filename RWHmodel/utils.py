@@ -55,8 +55,7 @@ def check_variables(mode, config, demand_transformation):
         ]
     if mode == "batch":
         variables = [
-            'srf_area', 'threshold', 'T_return_list', 'int_cap', 'typologies_name',
-            'typologies_demand', 'typologies_area', 'shift', 'perc_constant'
+            'srf_area', 'int_cap', 'threshold', 'T_return_list', 'shift', 'perc_constant'
         ]
 
     # List to store missing variables

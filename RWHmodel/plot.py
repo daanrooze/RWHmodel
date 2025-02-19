@@ -239,17 +239,19 @@ def plot_saving_curve(
         unit,
         system_fn, # Path to saved system file
         threshold, # The maximum number of total OR consecutive days
-        typologies_name,
-        typologies_demand, # List of typologies and yearly demand, from setup_batch.toml file.
-        typologies_area, # List of typologies and surface area, from setup_batch.toml file.
         timestep,
         T_return_list = [1,2,5,10],
         reservoir_max = None,
         ambitions = None, # List of desired reduction lines (in %)
+        **kwargs
     ):
     if ambitions and type(ambitions)!=list:
         raise ValueError("Provide ambitions as list of percentages")
     
+    typologies_name = kwargs['typologies_name']
+    typologies_demand = kwargs['typologies_demand']
+    typologies_area = kwargs['typologies_area']
+
     df_vars = func_fitting(system_fn)
     
     cmap_list = [cmap_g1, cmap_g2, cmap_g3, cmap_g4]

@@ -459,11 +459,9 @@ class Model(object):
                     unit = unit,
                     system_fn = fn,
                     threshold = self.config['threshold'],
-                    typologies_name = self.config['typologies_name'],
-                    typologies_demand = self.config['typologies_demand'],
-                    typologies_area = self.config['typologies_area'],
                     timestep = timestep,
                     T_return_list = T_return_list,
                     reservoir_max = reservoir_max,
-                    ambitions = ambitions
+                    ambitions = ambitions,
+                    **kwargs
                 )
