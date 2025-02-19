@@ -147,17 +147,28 @@ def plot_run_coverage(
     
     fig, ax1 = plt.subplots(1, figsize=(14, 6))
     
-    c = ax1.pcolormesh(df.columns.astype(float), df.index, df.values.astype(float) * 100, cmap=cmap, norm=norm)
-    
     timestep_txt = colloquial_date_text(timestep)
-    
-    plt.xlabel(f'Specific demand [{unit}/year]')
-    plt.ylabel(f'Specific reservoir capacity [{unit}]')
-    
-    cbar = plt.colorbar(c, label='Yearly demand coverage by reservoir (%)')
-    cbar.set_ticks=np.linspace(0, 100, 6)
-    
-    plt.xticks(ticks=x_labels, labels=x_labels)
+
+    if len(df.columns) == 1:  # Single demand case
+        c = ax1.plot(df.index, df.values.flatten() * 100, marker='o', linestyle='-', color='#080c80', label=f'Demand {df.columns[0]} {unit}/year')
+        plt.xlabel(f'Specific reservoir capacity [{unit}/year]')
+        plt.ylabel(f'Coverage of total demand by reservoir [%]')
+        ax1.set_ylim([0, 100])
+        fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05))
+    elif len(df.index) == 1:  # Single reservoir case
+        c = ax1.plot(df.columns.astype(float), df.values.flatten() * 100, marker='o', linestyle='-', color='#080c80', label=f'Reservoir {df.index[0]} {unit}')
+        plt.xlabel(f'Specific demand [{unit}/year]')
+        plt.ylabel(f'Coverage of total demand by reservoir [%]')
+        ax1.set_ylim([0, 100])
+        fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05))
+    else:
+        c = ax1.pcolormesh(df.columns.astype(float), df.index, df.values.astype(float) * 100, cmap=cmap, norm=norm)
+        cbar = plt.colorbar(c, label='Yearly demand coverage by reservoir (%)')
+        cbar.set_ticks=np.linspace(0, 100, 6)
+        plt.xticks(ticks=x_labels, labels=x_labels)
+        plt.xlabel(f'Specific demand [{unit}/year]')
+        plt.ylabel(f'Specific reservoir capacity [{unit}]')
+    #c = ax1.pcolormesh(df.columns.astype(float), df.index, df.values.astype(float) * 100, cmap=cmap, norm=norm)
     
     plt.grid(visible=True, which="major", color="white", linestyle="-", alpha=0.2)
     

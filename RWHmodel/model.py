@@ -20,6 +20,7 @@ class Model(object):
         self,
         root: str,
         name: str,
+        mode: str,
         setup_fn: str,
         forcing_fn: str,
         demand_fn: Optional[str] = None,
@@ -39,11 +40,10 @@ class Model(object):
         for folder in ['input', 'output', 'output/figures', 'output/runs', 'output/runs/summary', 'output/statistics']:
             makedir(os.path.join(self.root, folder))
         
-        # Set model mode default to 'single'. Overrides to 'batch' if demand_fn is of type list or folder with files.
-        if type(demand_fn)==list or (isinstance(demand_fn, (str, Path)) and Path(demand_fn).is_dir()):
-            self.mode = 'batch'
-        else: 
-            self.mode = 'single'
+        # Set model run mode
+        if mode not in ["single", "batch"]:
+            raise ValueError("Provide model run mode as either 'single' or 'batch' run.")
+        self.mode = mode
         
         self.unit = unit
         
@@ -74,20 +74,24 @@ class Model(object):
         
         if self.mode == 'batch':
             # Setup demand range if given
-            if type(demand_fn)==list:
+            if isinstance(demand_fn, list):
                 self.config["dem_min"] = demand_fn[0]
                 self.config["dem_max"] = demand_fn[1]
                 if len(demand_fn) == 3:
                     self.config["dem_step"] = demand_fn[2]
                 else:
                     self.config["dem_step"] = 100  # Default number of steps = 100
-                self.config["demand_lst"] = list(np.linspace(self.config["dem_min"], self.config["dem_max"], self.config["dem_step"]))
+                self.config["demand_lst"] = np.linspace(self.config["dem_min"], self.config["dem_max"], self.config["dem_step"])
             
             # If given a folder with collection of demand timeseries, generate list of all demand files
-            if Path(demand_fn).is_dir():
+            elif (isinstance(demand_fn, (str, Path)) and Path(demand_fn).is_dir()):
                 self.config["demand_lst"] = [str(file) for file in Path(demand_fn).glob("*.csv")]
                 self.config["dem_step"] = len(self.config["demand_lst"])
                 demand_fn = self.config["demand_lst"][0] # Overwrite the demand_fn variable for the first item in the list.
+            else:
+                self.config["dem_step"] = 1 # Set step amount to 1.
+                self.config["demand_lst"] = [demand_fn]
+
 
         self.demand = Demand(
             root = root,
