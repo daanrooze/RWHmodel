@@ -59,9 +59,10 @@ class Model(object):
         
         # Setup of area characteristics
         self.setup_from_toml(setup_fn=setup_fn)
+        self.config["demand_transform"] = demand_transform
 
         # Check whether all required variables are provided
-        check_variables(self.mode, self.config, demand_transform)
+        check_variables(self.mode, self.config, self.config["demand_transform"])
         
         # Setup forcing
         self.forcing = Forcing(
@@ -96,7 +97,7 @@ class Model(object):
         self.demand = Demand(
             root = root,
             demand_fn = demand_fn,
-            demand_transform = demand_transform,
+            demand_transform = self.config["demand_transform"],
             forcing_fn = self.forcing.data,
             timestep = timestep,
             t_start = t_start,
@@ -274,12 +275,11 @@ class Model(object):
                     self.reservoir_initial_state * reservoir_cap
                 )
 
-                # Update timeseries, including seasonal transformation and yearly demand
-                #Demand.update_demand(self.demand, update_data = demand) #TODO: remove and just re-initialize Demand?
                 # Re-initiate Demand
                 self.demand = Demand(
                     root = self.root,
                     demand_fn = demand,
+                    demand_transform = self.config["demand_transform"],
                     forcing_fn = self.forcing.data,
                     unit = self.unit,
                     setup_fn = self.config,

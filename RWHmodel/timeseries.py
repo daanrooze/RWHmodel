@@ -144,8 +144,8 @@ class Demand(TimeSeries):
                         "Can only apply generic sinusoid seasonal variation to singular yearly demand figures."
         )
         # Set self.transform if demand timeseries transformation is True
-        self.transform = demand_transform
-        if self.transform:
+        demand_transform
+        if demand_transform:
             self.perc_constant = perc_constant
             self.shift = shift
         
@@ -177,7 +177,7 @@ class Demand(TimeSeries):
                 )
         self.yearly_demand = np.round(float((self.data["demand"].sum())/self.num_years), 1)
         
-        if self.transform:
+        if demand_transform:
             timeseries_transformed = self.seasonal_variation(
                 yearly_demand = self.yearly_demand,
                 perc_constant = self.perc_constant,
@@ -190,7 +190,8 @@ class Demand(TimeSeries):
     
     def update_demand(
         self,
-        update_data
+        update_data,
+        demand_transform: Optional[bool] = False
     ) -> pd.DataFrame:
         """
         Update the demand data in the object.
@@ -212,7 +213,7 @@ class Demand(TimeSeries):
         self.yearly_demand = np.round(float((self.data["demand"].sum()) / self.num_years), 1)
         
         # Reapply seasonal variation if transformation is enabled
-        if self.transform:
+        if demand_transform:
             timeseries_transformed = self.seasonal_variation(
                 yearly_demand=self.yearly_demand,
                 perc_constant=self.perc_constant,
