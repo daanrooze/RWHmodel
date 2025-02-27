@@ -1,12 +1,17 @@
-"""Utility functions."""
+""" Utility functions. """
 
 import os
-
 import pandas as pd
 
 
-def convert_m3_to_mm(df: pd.DataFrame, col: str, surface_area: float) -> pd.DataFrame:
-    """Convert a cubic meters pd.series to milimeters.
+def convert_m3_to_mm(
+        df: pd.DataFrame,
+        col: str,
+        surface_area: float
+    ) -> pd.DataFrame:
+    """
+    Convert a pd.series with unit cubic meters per timestep
+    to milimeters per timestep.
 
     Parameters
     ----------
@@ -23,8 +28,14 @@ def convert_m3_to_mm(df: pd.DataFrame, col: str, surface_area: float) -> pd.Data
     df.loc[:, col] = (df.loc[:, col] / surface_area) * 1000
     return df
 
-def convert_mm_to_m3(df: pd.DataFrame, col: str, surface_area: float) -> pd.DataFrame:
-    """Convert a millimeters pd.series to cubic meters.
+def convert_mm_to_m3(
+        df: pd.DataFrame,
+        col: str,
+        surface_area: float
+    ) -> pd.DataFrame:
+    """
+    Convert a pd.series with unit milimeters per timestep
+    to cubic meters per timestep.
 
     Parameters
     ----------
@@ -41,13 +52,26 @@ def convert_mm_to_m3(df: pd.DataFrame, col: str, surface_area: float) -> pd.Data
     df.loc[:, col] = (df.loc[:, col] / 1000) * surface_area
     return df
 
-def makedir(path: str) -> None:
-    """Create new directory if path does not exist."""
+def makedir(
+        path: str
+    ) -> None:
+    """
+    Create new directory if path does not exist.
+    
+    Parameters
+    ----------
+    path : str
+        Path to input and output folders.
+    """
     if not os.path.exists(path):
         print(f"{path} does not exist. Making new path.")
         os.makedirs(path)
 
-def check_variables(mode, config, demand_transformation):
+def check_variables(
+        mode: str,
+        config: dict,
+        demand_transformation: bool
+    ) -> None:
     # List of required variables
     if mode == "single":
         variables = [
@@ -81,7 +105,9 @@ def check_variables(mode, config, demand_transformation):
         missing_vars_str = ', '.join(missing_vars)
         raise ValueError(f"The following variables are missing in config: {missing_vars_str}")
 
-def colloquial_date_text(timestep):
+def colloquial_date_text(
+        timestep: int
+    ) -> None:
     if timestep >= 365 * 24 * 3600:
         timestep_txt = 'year'
     elif timestep >= 24 * 3600:

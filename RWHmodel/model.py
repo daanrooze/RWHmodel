@@ -16,6 +16,8 @@ from RWHmodel.plot import plot_meteo, plot_run, plot_run_coverage, plot_system_c
 
 
 class Model(object):
+    """ RWHmodel model class. """
+
     def __init__(
         self,
         root: str,
@@ -32,6 +34,50 @@ class Model(object):
         t_end: Optional[str] = None,
         unit: str = "mm",
     ):
+        """
+        Initialize the model class by providing mandatory and optional arguments.
+
+        Parameters
+        ----------
+        root : str
+            Folder location of model root.
+        name : str
+            Unique name of the model instance.
+        mode : str
+            Run mode of the model. Can be either 'single' or 'batch' run.
+        setup_fn : str
+            Path to setup.toml file that specifies generic characteristics.
+        forcing_fn : str
+            Path to forcing.csv file containing precipitation and PET timeseries.
+        demand_fn : str, int, float, list
+            Demand forcing. Choose between
+            1) path to demand.csv file,
+            2) singular value [unit/timestep] or
+            3) list with Numpy.linspace arguments (for batch run).
+        demand_transform : bool, optional
+            Specify whether non-timeseries demand argument should be transformed
+            with a generic, sinusoid seasonal dynamic.
+        reservoir_range : list, optional
+            Required for batch run only. List with Numpy.linspace arguments
+            to specify range of reservoirs to be modelled.
+        reservoir_initial_state : float, optional
+            Fraction of the reservoir capacity that is filled on the first timestep.
+            Default is 0.
+        timestep : int, optional
+            Timestep of the model. Default is derived from forcing timeseries.
+        t_start : str, optional
+            Start time to clip the timeseries for modelling. Default is first timestep of forcing timeseries
+        t_end : str, optional
+            End time to clip the timeseries for modelling. Default is final timestep of forcing timeseries
+        unit : str, optional
+            Calculation unit for the reservoir size and demand per timestep: 'mm' or 'm3'.
+            Ensure that both reservoir and demand timeseries are in the same and correct unit.
+            Default is 'mm'.
+
+        Returns
+        -------
+        object
+        """
         # Setup folder structure
         if len(root)>0:
             self.root = root
@@ -152,6 +198,15 @@ class Model(object):
 
         
     def setup_from_toml(self, setup_fn):
+        """
+        Setup general area characteristics from the setup.toml file.
+        Add all characteristics to self.config.
+
+        Parameters
+        ----------
+        setup_fn : str
+            Path to setup.toml file that specifies generic characteristics.
+        """
         folder = f"{self.root}/input"
         with codecs.open(os.path.join(folder, setup_fn), "r", encoding="utf-8") as f:
             area_chars = toml.load(f)
@@ -161,7 +216,18 @@ class Model(object):
     def run(
             self,
             save=True,
-        ):
+        ) -> pd.DataFrame:
+        """
+        Model run function that takes hydrological forcing, demand forcing
+        and area characteristics to calculate runoff and reservoir dynamics
+        from the setup.toml file.
+
+        Parameters
+        ----------
+        save : bool, optional
+            Boolean to indicate whether model output should be saved to .csv.
+            Model outputs are saved in the 'root/output/runs' folder.
+        """
         demand_array = self.demand.data.loc[:, "demand"]
         
         ## Initialize numpy arrays
@@ -229,14 +295,29 @@ class Model(object):
         return df
 
 
-
     def batch_run(
         self,
         method=None,
         log=False,
         save=False
-    ):
-        # Batch run function to obtain solution space and statistics on output.
+    ) -> None:
+        """
+        Function to batch run the model for a given scenario space.
+        Output of this batch function can be used for statistical analysis.
+
+        Parameters
+        ----------
+        method : str, optional
+            Method to specify the level of aggregation for the Peak Over Threshold approach
+            ('total_timesteps' or 'consecutive_timesteps').
+            This is not required if statistics are not of interest.
+        log : bool, optional
+            Boolean value that determines if the location in the loop should
+            be printed during each iteration.
+        save : bool, optional
+            Boolean to indicate whether model output should be saved to .csv.
+            Model outputs are saved in the 'root/output/runs' folder. Default is False.
+        """
         # Initiate progress bar
         pbar = tqdm(total = self.config["dem_step"] * self.config["cap_step"], desc="Processing", unit="iter")
         
@@ -361,18 +442,53 @@ class Model(object):
 
     def plot(
         self,
-        plot_type=None,
+        plot_type,
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
         timestep: Optional[int] = None,
         fn: Optional[str] = None,
-        T_return_list: Optional[int] = None,
-        validation: Optional[str] = None,
-        reservoir_max: Optional[int] = None,
+        T_return_list: Optional[list] = None,
+        validation: Optional[bool] = None,
         unit: Optional[str] = None,
+        reservoir_max: Optional[int] = None,
         ambitions: Optional[list] = None,
         **kwargs
-    ):
+    ) -> None:
+        """
+        General plotting function to show forcing, basic model results and
+        some statistics metrics.
+
+        Parameters
+        ----------
+        plot_type : str
+            Plot type of interest. Choose between 'meteo', 'run', 'run_coverage',
+            'system_curve', 'saving_curve'.
+        t_start : str, optional
+            Start time of plotting interval. Does not have to be the same as model
+            start time. Default is model start time.
+        t_end : str, optional
+            End time of plotting interval. Does not have to be the same as model
+            end time. Default is model end time.
+        timestep : int, optional
+            Timestep of plotting. Does not have to be the same as model timestep.
+            Default is model timestep.
+        fn : str, optional
+            Filename of model run results to be used in plotting, for instance when
+            plotting previous model run results. Default is results of current model run.
+        T_return_list : list, optional
+            List of return time periods to be used for plotting Peak Over Threshold analysis.
+            Default is taken from config file.
+        validation : bool, optional
+            Boolean to indicate whether raw model results should be plotted over fitted curves
+            for the Peak Over Threshold analysis. Default is False.
+        unit : str, optional
+            Unit for plotting axis. Choose between 'mm' or 'm3'. Default is taken
+            from model class.
+        reservoir_max : int, float, optional
+            Maximum reservoir size to be used for the 'savings' plot type.
+        ambitions : list, optional
+            Vertical ambition lines to be plotted on the 'savings' plot type.
+        """
         plot_types = ["meteo", "run", "run_coverage", "system_curve", "saving_curve"]
         if plot_type not in plot_types:
             raise ValueError(
@@ -425,8 +541,7 @@ class Model(object):
                 root = self.root,
                 name = self.name,
                 run_fn = fn,
-                unit = self.unit,
-                timestep = timestep,
+                unit = self.unit
             )
         
         if plot_type in ["system_curve", "saving_curve"]:
