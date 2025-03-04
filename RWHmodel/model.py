@@ -507,7 +507,7 @@ class Model(object):
                 forcing_fn = self.forcing.data,
                 t_start = t_start,
                 t_end = t_end,
-                aggregate = False
+                **kwargs,
             )
         
         if plot_type == "run":

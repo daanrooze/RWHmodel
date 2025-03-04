@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from typing import Optional
 
 ######### COLOR MAPS #########
 # Default color map
@@ -25,7 +26,7 @@ def plot_meteo(
         forcing_fn,
         t_start,
         t_end,
-        aggregate = False
+        **kwargs
     ) -> None:
     """
     Meteo plotting funtion.
@@ -42,10 +43,9 @@ def plot_meteo(
         Start time of plotting interval.
     t_end : str
         End time of plotting interval.
-    aggregate : bool, optional
-        Boolean to specify whether meteo plotting should be
-        aggregrated to monthly values.
     """
+    aggregate = kwargs['aggregate']
+
     df = forcing_fn
     # Clip DataFrame based on t_start and t_end
     mask = (df.index > t_start) & (df.index <= t_end)
