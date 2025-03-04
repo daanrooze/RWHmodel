@@ -325,10 +325,6 @@ class Model(object):
         methods = ["total_timesteps", "consecutive_timesteps"]
         if method is not None and method not in methods:
             raise ValueError(f"Provide valid method from {methods}.")
-        if self.unit != "mm" and len(self.config["typologies_name"]) > 1:
-            raise ValueError(
-                "Ambiguous surface area. Unit conversion can only be used for a maximum of one surface area."
-            )
         
         if method:
             threshold = self.config["threshold"]
