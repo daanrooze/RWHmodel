@@ -152,7 +152,15 @@ model.plot(plot_type="system_curve")
 ```
 To plot the and potential savings curves, call the plot function and specify the typologies to be represented in the graph. This can be the main typology outlined in the  setup_batch_run.toml file, but the user can experiment with different total demands and surface areas.
 ```
-model.plot(plot_type="saving_curve", typologies_name = ['industry_hall'], typologies_demand = [2500], typologies_area = [3500])
+model.plot(
+        plot_type="saving_curve",
+        T_return_list=[1,2,5,10],
+        unit='m3',
+        typologies_name = ['Industry hall'],
+        typologies_demand = [1500],
+        typologies_area = [3500],
+        reservoir_max = 1000
+    )
 ```
 
 Figure plots are stored in: **root/output/figures**

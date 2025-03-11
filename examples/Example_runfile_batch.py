@@ -5,6 +5,7 @@ def main():
     testmodel = RWHmodel.Model(
         root = r"C:\Users\example_case",
         name = "example_case",
+        mode = "batch",
         setup_fn = r"C:\Users\example_case\input\setup_batch_run.toml",
         forcing_fn = r"C:\Users\example_case\input\forcing_test.csv",
         demand_fn = [0.5, 5, 10],
