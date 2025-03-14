@@ -389,25 +389,10 @@ class Model(object):
                 
                 # Calculate coverage
                 total_demand_sum = self.demand.data['demand'].sum()
-                # Create the new column (or series) with values based on the condition
-                new_column_data = np.where(
-                    np.isnan(total_demand_sum) | (total_demand_sum == 0),
-                    1,  # If total_demand_sum is NaN or 0, use 1
-                    self.results_summary['demand_from_reservoir'] / total_demand_sum  # Otherwise calculate the ratio
-                )
-
-                # Convert it into a DataFrame to easily concatenate
-                new_column = pd.DataFrame({
-                    self.demand.yearly_demand: new_column_data
-                }, index=df_coverage.index)
-
-                # Use pd.concat to add this new column to df_coverage in one go
-                df_coverage = pd.concat([df_coverage, new_column], axis=1)
-
-                #if np.isnan(total_demand_sum) or total_demand_sum == 0: #TODO: to remove this
-                #    df_coverage.loc[reservoir_cap, self.demand.yearly_demand] = 1
-                #else:
-                #    df_coverage.loc[reservoir_cap, self.demand.yearly_demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
+                if np.isnan(total_demand_sum) or total_demand_sum == 0:
+                    df_coverage.loc[reservoir_cap, self.demand.yearly_demand] = 1
+                else:
+                    df_coverage.loc[reservoir_cap, self.demand.yearly_demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
             
             if method:
                 # Calculate return periods based on events
