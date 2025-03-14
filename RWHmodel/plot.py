@@ -211,7 +211,7 @@ def plot_run_coverage(
 
     if len(df.columns) == 1:  # Single demand case
         c = ax1.plot(df.index, df.values.flatten() * 100, marker='o', linestyle='-', color='#080c80', label=f'Demand {df.columns[0]} {unit}/year')
-        plt.xlabel(f'Specific reservoir capacity [{unit}/year]')
+        plt.xlabel(f'Specific reservoir capacity [{unit}]')
         plt.ylabel(f'Coverage of total demand by reservoir [%]')
         ax1.set_ylim([0, 100])
         fig.legend(loc='upper center', bbox_to_anchor=(0.5, 0.05))
