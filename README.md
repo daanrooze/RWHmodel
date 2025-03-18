@@ -309,7 +309,9 @@ Assumptions for the Rainfall-Runoff model:
 The reservoir model takes as input the runoff (inflow) from Model 1 (Rainfall-Runoff Model) and the water demand (outflow). The model outputs are the reservoir capacity, reservoir overflow, supplied demand and demand deficit.  The initial state of the reservoir can be specified when running the model.
 
 The Reservoir model iterates for each timestep the steps outlined below.
+
 **Step 1: Update Reservoir Storage**
+
 $$
 S' = S + R - D
 $$
@@ -321,9 +323,11 @@ Where:
 - D = water demand
 
 **Step 2: Check for Overflow**
+
 $$
 O = \max(0, S' - C)
 $$
+
 $$
 S' = \min(S', C)
 $$
@@ -333,12 +337,15 @@ Where:
 - C = reservoir capacity
 
 **Step 3: Check for Deficit**
+
 $$
 \text{If } S' > D, \quad \text{Deficit} = 0
 $$
+
 $$
 \text{If } 0 < S' \leq D, \quad \text{Deficit} = D - S'
 $$
+
 $$
 \text{If } S' \leq 0, \quad \text{Deficit} = D, \quad S' = 0
 $$
