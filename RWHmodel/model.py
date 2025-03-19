@@ -178,9 +178,7 @@ class Model(object):
             self.config["capacity_lst"] = list(np.linspace(self.config["cap_min"], self.config["cap_max"], self.config["cap_step"]))
             # Set reservoir capacity for range
             self.config['reservoir_cap'] = self.config['cap_min']
-        # Convert reservoir capacity to mm if unit set to "m3".
-        if self.unit == "m3":
-            self.config['reservoir_cap'] = (self.config['reservoir_cap'] / self.config["srf_area"]) * 1000
+        
         # Check if percentage of reservoir_initial_state is not greater than 1
         if reservoir_initial_state > 1:
             raise ValueError("Provide initial reservoir state as fraction of reservoir capacity (between 0 and 1).")
@@ -192,8 +190,10 @@ class Model(object):
 
         # Initiate reservoir
         self.reservoir = Reservoir(
-            self.config['reservoir_cap'],
-            reservoir_initial_state * self.config['reservoir_cap']
+            reservoir_cap = self.config['reservoir_cap'],
+            reservoir_stor = reservoir_initial_state * self.config['reservoir_cap'],
+            srf_area = self.config['srf_area'],
+            unit = self.unit
         )
 
         
@@ -257,6 +257,11 @@ class Model(object):
             else:
                 deficit_timesteps[i] = 0
         
+        # Add total number of deficit_timesteps if deficit never reaches 0 (to prevent false reporting of deficit timesteps)
+        if min(deficit) != 0:
+            # Change the last value of deficit_timesteps to the length of the precipitation timeseries
+            deficit_timesteps[-1] = len(net_precip)
+
         # Convert to dataframe
         df_data = {
             'reservoir_stor': reservoir_stor,
@@ -348,8 +353,10 @@ class Model(object):
 
                 # Re-initiate Reservoir for each run
                 self.reservoir = Reservoir(
-                    reservoir_cap,
-                    self.reservoir_initial_state * reservoir_cap
+                    reservoir_cap = reservoir_cap,
+                    reservoir_stor = self.reservoir_initial_state * reservoir_cap,
+                    srf_area = self.config['srf_area'],
+                    unit = self.unit
                 )
 
                 # Re-initiate Demand
@@ -378,12 +385,12 @@ class Model(object):
                     if method == "consecutive_timesteps": 
                         df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
                         df_deficit_events = df_deficit_events.reset_index(drop=True)
-                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{self.demand.yearly_demand}'})
+                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{self.demand.yearly_demand}'}) # Rename column to yearly demand in mm/year.
                     if method == "total_timesteps": 
                         df_run = df_run.resample('YE').sum()
                         df_deficit_events = df_run["deficit_timesteps"].sort_values(ascending=False).to_frame()
                         df_deficit_events = df_deficit_events.reset_index(drop=True)
-                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{self.demand.yearly_demand}'})
+                        df_deficit_events = df_deficit_events.rename(columns={'deficit_timesteps': f'{self.demand.yearly_demand}'}) # Rename column to yearly demand in mm/year.
                         
                     df_deficit_events_total = pd.concat([df_deficit_events_total, df_deficit_events[[f'{self.demand.yearly_demand}']]], axis=1)
                 

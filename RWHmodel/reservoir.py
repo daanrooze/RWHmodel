@@ -3,7 +3,13 @@ class Reservoir():
     def __init__(self,
         reservoir_cap: float,
         reservoir_stor: float = 0.0,
+        srf_area: float = None,
+        unit: str = "mm"
     ):
+        # Convert reservoir capacity to mm if unit set to "m3".
+        if unit == "m3":
+            reservoir_cap = (reservoir_cap / srf_area) * 1000
+        
         self.reservoir_cap =  reservoir_cap
         self.reservoir_stor = reservoir_stor
         self.deficit = 0

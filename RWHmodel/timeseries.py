@@ -352,6 +352,6 @@ class Demand(TimeSeries):
         fn_out : str
             Output file name. Default is 'demand'.
         """
-        self.write_timeseries(df=self.demand, subdir="runs", fn_out=fn_out)
+        self.write_timeseries(df=self.data, subdir="runs", fn_out=fn_out)
 
 
