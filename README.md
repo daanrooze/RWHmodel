@@ -273,6 +273,9 @@ model.run()
 
 The **run** function takes the following argument:
 - **save**: Optional, default = True. Boolean to specify whether the run output should be saved to .csv.
+
+The function saves the following output:
+- **run timeseries**: The model run timeseries contains the date range, stored volume in the reservoir, reservoir overflow, demand, demand deficit and the timesteps where there was a deficit (all in their original unit). The timeseries is saved as .csv format in: **root/output/runs/summary/{*name*}_run_res-cap={*reservoir capacity in mm*}_yr-dem={*yearly demand in mm*}.csv**
 ### Batch run
 To perform a batch model run, call the **batch_run** function.
 ```
@@ -284,7 +287,9 @@ The **batch_run** function takes the following arguments:
 - **log**: Optional, default = False. Boolean to toggle terminal text printing for each iteration.
 - **save**: Optional, default = False. Boolean to toggle individual saving of every model iteration (to .csv).
 
-
+The function saves the following output:
+- **coverage summary**: table showing the fraction of the *total* water demand that can be supplied for each reservoir-demand combination. Reservoir and demand values are saved in mm and mm/year, respectively. The table is saved as .csv format in: **root/output/runs/summary/{*name*}_batch_run_coverage_summary.csv**
+- **system characteristics**: table in indicating the (maximum) yearly demand [mm/year] that can be sustained for various reservoir sizes [mm] for the specified return periods and threshold value. These values are obtained using the Peak over Threshold approach. The table is saved as .csv format in: **root/output/runs/statistics/{*name*}_batch_run.csv**.
 # Model Documentation
 The computational model used consists of two sub-models that operate sequentially: a **rainfall-runoff model** and a **reservoir model**. The rainfall-runoff model firstly calculates the potential runoff from the specified surface. Afterwards, the reservoir model iterates over all timesteps to simulate the reservoir capacity given all inputs and outputs.
 
