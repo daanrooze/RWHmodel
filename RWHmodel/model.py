@@ -179,11 +179,6 @@ class Model(object):
             # Set reservoir capacity for range
             self.config['reservoir_cap'] = self.config['cap_min']
         
-        # Check if percentage of reservoir_initial_state is not greater than 1
-        if reservoir_initial_state > 1:
-            raise ValueError("Provide initial reservoir state as fraction of reservoir capacity (between 0 and 1).")
-        # Set inital reservoir capacity factor
-        self.reservoir_initial_state = reservoir_initial_state 
         # Check if the maximum demand exceeds the reservoir capacity.
         if (self.demand.data.max() > self.config['reservoir_cap']).any():
             print("Warning: maximum demand is greater than the reservoir capacity.")
@@ -191,11 +186,17 @@ class Model(object):
         # Initiate reservoir
         self.reservoir = Reservoir(
             reservoir_cap = self.config['reservoir_cap'],
-            reservoir_stor = reservoir_initial_state * self.config['reservoir_cap'],
+            reservoir_stor = self.config['reservoir_cap'],
             srf_area = self.config['srf_area'],
             unit = self.unit
         )
-
+        # Set fraction of initial reservoir storage
+        self.reservoir_initial_state = reservoir_initial_state
+        # Check if percentage of reservoir_initial_state is not greater than 1
+        if self.reservoir_initial_state > 1:
+            raise ValueError("Provide initial reservoir state as fraction of reservoir capacity (between 0 and 1).")
+        # Update initial reservoir capacity
+        self.reservoir.reservoir_stor = self.reservoir.reservoir_cap * self.reservoir_initial_state
         
     def setup_from_toml(self, setup_fn):
         """
@@ -337,9 +338,7 @@ class Model(object):
             df_system = pd.DataFrame(columns=self.config["T_return_list"] + ['reservoir_cap'])
             
         # Initialize df_coverage to store summaries of coverage and deficit for each run.
-        df_coverage = pd.DataFrame()#columns=demand_lst)
-        df_coverage['reservoir_cap'] = self.config["capacity_lst"]
-        df_coverage.set_index('reservoir_cap', inplace=True)
+        df_coverage = pd.DataFrame()
     
         # Loop through reservoir capacities in capacity_lst
         for reservoir_cap in self.config["capacity_lst"]:
@@ -396,10 +395,13 @@ class Model(object):
                 
                 # Calculate coverage
                 total_demand_sum = self.demand.data['demand'].sum()
+
+                # If total demand is NaN or zero, set coverage to 1
                 if np.isnan(total_demand_sum) or total_demand_sum == 0:
-                    df_coverage.loc[reservoir_cap, self.demand.yearly_demand] = 1
+                    df_coverage.loc[self.reservoir.reservoir_cap, self.demand.yearly_demand] = 1
                 else:
-                    df_coverage.loc[reservoir_cap, self.demand.yearly_demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
+                    # Otherwise, calculate coverage ratio
+                    df_coverage.loc[self.reservoir.reservoir_cap, self.demand.yearly_demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
             
             if method:
                 # Calculate return periods based on events
@@ -416,7 +418,7 @@ class Model(object):
                 # Create a DataFrame for the current reservoir size's results
                 opt_demand_df = pd.DataFrame([opt_demand_lst], columns=self.config["T_return_list"])
                 # Add the reservoir size as a new column to this DataFrame
-                opt_demand_df["reservoir_cap"] = reservoir_cap
+                opt_demand_df["reservoir_cap"] = self.reservoir.reservoir_cap
         
                 # Ensure the dtypes match before concatenation
                 for col in df_system.columns:
@@ -435,6 +437,8 @@ class Model(object):
             # Save df_system to csv
             df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run.csv", index=False)
         
+        # Set 'reservoir_cap' as the index
+        df_coverage.rename_axis('reservoir_cap', inplace=True)
         df_coverage = df_coverage.reset_index(drop=False)
         self.results_summary = df_coverage
         # Save coverage to csv

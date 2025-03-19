@@ -9,6 +9,7 @@ class Reservoir():
         # Convert reservoir capacity to mm if unit set to "m3".
         if unit == "m3":
             reservoir_cap = (reservoir_cap / srf_area) * 1000
+            reservoir_stor = (reservoir_stor / srf_area) * 1000
         
         self.reservoir_cap =  reservoir_cap
         self.reservoir_stor = reservoir_stor
