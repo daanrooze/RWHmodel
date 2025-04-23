@@ -67,7 +67,7 @@ The next step is to initiate the model with the given parameters as arguments:
 - **timestep**: Model timestep is 1 day (86400 seconds).
 - **unit**: Calculation unit for the reservoir size and demand per timestep, in this case ‘mm’.
 
-```
+```python
 import RWHmodel
 
 model = RWHmodel.Model(
@@ -84,13 +84,13 @@ model = RWHmodel.Model(
 ```
 
 Call the run function using the following command:
-```
+```python
 model.run()
 ```
 Model run results are stored in: **root/output/runs**
 
 Plot model results using the following command:
-```
+```python
 model.plot(plot_type="run")
 ```
 Figure plots are stored in: **root/output/figures**
@@ -119,7 +119,7 @@ The next step is to initiate the model with the given parameters as arguments:
 - **timestep**: Model timestep is 1 hour (3600 seconds).
 - **unit**: Calculation unit for the reservoir size and demand per timestep, in this case ‘m3’.
 
-```
+```python
 import RWHmodel
 
 model = RWHmodel.Model(
@@ -139,19 +139,19 @@ model = RWHmodel.Model(
 For this exercise, we are interested in the amount of consecutive days that the reservoir does not suffice for the given demand. This is the ‘threshold’ specified in the **setup_batch_run.toml** file.
 
 Call the batch run function using the following command,  :
-```
-model.batch_run(method=’consecutive_timesteps’)
+```python
+model.batch_run(method="consecutive_timesteps")
 ```
 The ‘coverage summary’ results are stored in: **root/output/runs/summary**
 The ‘system characteristics’, using an extreme value approach and the specified return period,  are stored in: **root/output/runs/statistics**
 
 Plot the coverage summary and system curve using the following commands:
-```
+```python
 model.plot(plot_type="run_coverage")
 model.plot(plot_type="system_curve")
 ```
 To plot the and potential savings curves, call the plot function and specify the typologies to be represented in the graph. This can be the main typology outlined in the  setup_batch_run.toml file, but the user can experiment with different total demands and surface areas.
-```
+```python
 model.plot(
         plot_type="saving_curve",
         T_return_list=[1,2,5,10],
@@ -177,50 +177,50 @@ After initiating a **model** instance, users can call various plotting functions
 **Plotting meteo**
 
 To plot the entire forcing timeseries:
-```
+```python
 model.plot(plot_type="meteo")
 ```
 To plot a clipped part of the forcing timeseries:
-```
+```python
 model.plot(plot_type="meteo", t_start="2000-06-01", t_end="2000-05-31")
 ```
 To plot the forcing timeseries, monthly aggregated:
-```
+```python
 model.plot(plot_type="meteo", aggregate=True)
 ```
 
 **Plotting run results**
 
 To plot the full run results:
-```
+```python
 model.plot(plot_type="run")
 ```
 To plot a clipped part of the run results:
-```
+```python
 model.plot(plot_type="run", t_start="2000-06-01", t_end="2000-05-31")
 ```
 
 **Plotting run coverage**
 
 To plot the coverage of reservoir(s) compared to demand(s):
-```
+```python
 model.plot(plot_type="run_coverage")
 ```
 
 **Plotting system curve**
 
 To plot the “system-curve”:
-```
+```python
 model.plot(plot_type="system_curve")
 ```
 To plot the “system-curve”, using a specified return period list and enabling raw data plotting for validation purposes:
-```
+```python
 model.plot(plot_type="system_curve", validation=True, T_return_list=[1,2,5,10,20])
 ```
 **Plotting savings-curve**
 
 To plot the “savings-curve” for a selection of typologies:
-```
+```python
 model.plot(
         plot_type="saving_curve",
         typologies_name = ['Apartment', 'Townhouse', 'Villa'],
@@ -229,7 +229,7 @@ model.plot(
 )
 ```
 To plot the “savings-curve”, using specified return period list, plotting unit as m3, maximum reservoir capacity and (vertical) ambition lines for 15%, 30% and 65% reduction:
-```
+```python
 model.plot(
         plot_type="saving_curve",
         T_return_list=[1,2,5,10],
@@ -246,7 +246,7 @@ model.plot(
 This section describes all mandatory and optional user arguments for the Python interface of the model.
 ### Initializing the model
 The model is initialized by calling the **.Model** class within the RWHmodel package.
-```
+```python
 import RWHmodel
 model = RWHmodel.Model()
 ```
@@ -267,7 +267,7 @@ The initialization function takes the following arguments:
 - **unit**: Optional, default is ‘mm’. Calculation unit for the reservoir size and demand per timestep: ‘mm’ or ‘m3’. Ensure that both reservoir and demand timeseries are in the same and correct unit.
 ### Single run
 To perform a single model run, call the **run** function.
-```
+```python
 model.run()
 ```
 
@@ -278,7 +278,7 @@ The function saves the following output:
 - **run timeseries**: The model run timeseries contains the date range, stored volume in the reservoir, reservoir overflow, demand, demand deficit and the timesteps where there was a deficit (all in their original unit). The timeseries is saved as .csv format in: **root/output/runs/summary/{*name*}_run_res-cap={*reservoir capacity in mm*}_yr-dem={*yearly demand in mm*}.csv**
 ### Batch run
 To perform a batch model run, call the **batch_run** function.
-```
+```python
 model.batch_run()
 ```
 
