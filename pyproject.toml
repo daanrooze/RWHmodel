@@ -16,7 +16,7 @@ dependencies = [
     "tomli-w",           # writing toml files
     "toml",              # parsing toml files
     "matplotlib",        # plotting
-    "scipy"              # statistical modules
+    "scipy",             # statistical modules
     "tqdm"               # progress bar
 ]
 
