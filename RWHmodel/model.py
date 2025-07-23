@@ -337,9 +337,9 @@ class Model(object):
             # Initialize df_system to store demand and reservoir figures for defined return periods (satisfying the threshold requirement)
             df_system = pd.DataFrame(columns=self.config["T_return_list"] + ['reservoir_cap'])
             
-        # Initialize df_coverage to store summaries of coverage and deficit for each run.
-        df_coverage = pd.DataFrame()
-    
+        # Initialize list to accumulate coverage records
+        coverage_records = []
+        
         # Loop through reservoir capacities in capacity_lst
         for reservoir_cap in self.config["capacity_lst"]:
             
@@ -396,12 +396,17 @@ class Model(object):
                 # Calculate coverage
                 total_demand_sum = self.demand.data['demand'].sum()
 
-                # If total demand is NaN or zero, set coverage to 1
                 if np.isnan(total_demand_sum) or total_demand_sum == 0:
-                    df_coverage.loc[self.reservoir.reservoir_cap, self.demand.yearly_demand] = 1
+                    coverage_val = 1
                 else:
-                    # Otherwise, calculate coverage ratio
-                    df_coverage.loc[self.reservoir.reservoir_cap, self.demand.yearly_demand] = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
+                    coverage_val = (self.results_summary['demand_from_reservoir'] / total_demand_sum)
+
+                # accumulate record
+                coverage_records.append({
+                    'reservoir_cap': self.reservoir.reservoir_cap,
+                    'yearly_demand': self.demand.yearly_demand,
+                    'coverage': coverage_val
+                })
             
             if method:
                 # Calculate return periods based on events
@@ -437,9 +442,10 @@ class Model(object):
             # Save df_system to csv
             df_system.to_csv(f"{self.root}/output/statistics/{self.name}_batch_run.csv", index=False)
         
-        # Set 'reservoir_cap' as the index
-        df_coverage.rename_axis('reservoir_cap', inplace=True)
-        df_coverage = df_coverage.reset_index(drop=False)
+        # build final coverage DataFrame in one go to avoid fragmentation
+        df_coverage = pd.DataFrame(coverage_records)
+        df_coverage = df_coverage.pivot(index='reservoir_cap', columns='yearly_demand', values='coverage').reset_index()
+        
         self.results_summary = df_coverage
         # Save coverage to csv
         df_coverage.to_csv(f"{self.root}/output/runs/summary/{self.name}_batch_run_coverage_summary.csv", index=False)
