@@ -46,6 +46,7 @@ For basic usage of the tool, follow these steps:
 4. Run the model for your specific case study by using the installed model from the project directory. Model results, figures, and statistics will be saved in the /output folder in the project directory.
 
 ## Use cases
+*Disclaimer: This model has not been thoroughly tested. For developers, not all tests are operational.*
 ### Example: single model run
 If the user wants to run a single simulation, to instance to assess the dynamics of a particular irrigation system, the first step is to correctly set up the **setup.toml** file with general characteristics.
 
