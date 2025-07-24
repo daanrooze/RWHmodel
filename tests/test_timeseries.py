@@ -3,8 +3,6 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-import pytest
-
 from RWHmodel.timeseries import Forcing, Demand
 
 
@@ -12,14 +10,14 @@ from RWHmodel.timeseries import Forcing, Demand
 # Forcing tests
 
 def test_read_forcing(tmpdir):
-    forcing = Forcing(forcing_fn="tests/data/forcing_test.csv", root=str(tmpdir))
+    forcing = Forcing(forcing_fn="tests/input/forcing_test.csv", root=str(tmpdir))
     assert isinstance(forcing.data, pd.DataFrame)
     assert all([col in forcing.data.columns for col in ["precip", "pet"]])
     assert isinstance(forcing.data.index, pd.DatetimeIndex)
 
 
 def test_write_forcing(tmpdir):
-    forcing = Forcing(forcing_fn="tests/data/forcing_test.csv", root=str(tmpdir))
+    forcing = Forcing(forcing_fn="tests/input/forcing_test.csv", root=str(tmpdir))
     os.makedirs(os.path.join(tmpdir, "output", "runs"), exist_ok=True)
 
     # Call write without expecting a return

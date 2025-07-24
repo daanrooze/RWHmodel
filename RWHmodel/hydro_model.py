@@ -13,8 +13,15 @@ class HydroModel:
 
         ### fill numpy arrays
         for i in range(1, len(net_precip)):
-            int_stor[i] = max(min(int_stor[i - 1] + net_precip[i], self.int_cap), 0)
-            runoff[i] = max(0, net_precip[i] - int_stor[i])
+            if net_precip[i] >= 0:
+                space_left = self.int_cap - int_stor[i - 1]
+                used_for_storage = min(space_left, net_precip[i])
+                int_stor[i] = int_stor[i - 1] + used_for_storage
+                runoff[i] = net_precip[i] - used_for_storage
+            else:
+                # evaporation reduces storage, never below zero
+                new_storage = int_stor[i - 1] + net_precip[i]
+                int_stor[i] = max(0, new_storage)
+                runoff[i] = 0.0
 
         return int_stor, runoff
-

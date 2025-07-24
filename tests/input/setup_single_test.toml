@@ -1,0 +1,16 @@
+### area characteristics ###
+#   srf_area: Surface area [m2].
+#	int_cap: Maximum interception storage capacity of surface [mm].
+#	reserovoir_cap: Reservoir capacity [mm].
+
+srf_area = 60
+int_cap = 2
+reservoir_cap = 100
+
+### seasonal variation parameters ###
+#   shift: the phase of the sinus curves
+#   perc_constant: the percentage of the yearly water demand that is contantly used across the year (i.e. everything but garden irrigation, which is higher in the summer)
+#   The defaults given below are ones for the Euopean climate, with a higher water demand in the summer
+ 
+shift = 4.639
+perc_constant = 0.6

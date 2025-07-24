@@ -48,7 +48,7 @@ def func_fitting(
     # Reset index for df_system
     df_system = system_fn.reset_index(drop=True)
     
-    df_vars = pd.DataFrame(columns=["a", "b", "n"])
+    df_vars = pd.DataFrame(columns=["a", "b", "n"], dtype='float64')
     df_vars["Treturn"] = df_system.columns[1:]
     df_vars = df_vars.set_index("Treturn")
     

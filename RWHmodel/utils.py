@@ -105,13 +105,16 @@ def check_variables(
         missing_vars_str = ', '.join(missing_vars)
         raise ValueError(f"The following variables are missing in config: {missing_vars_str}")
 
-def colloquial_date_text(
-        timestep: int
-    ) -> None:
+def colloquial_date_text(timestep: int) -> str | None:
+    """
+    Return a human-readable string for the timestep
+    if it matches hour/day/year ranges. Otherwise return None.
+    """
     if timestep >= 365 * 24 * 3600:
-        timestep_txt = 'year'
+        return 'year'
     elif timestep >= 24 * 3600:
-        timestep_txt = 'day'
+        return 'day'
     elif timestep >= 3600:
-        timestep_txt = 'hour'
-    return timestep_txt
+        return 'hour'
+    else:
+        return None
