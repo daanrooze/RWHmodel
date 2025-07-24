@@ -17,40 +17,22 @@ class Reservoir():
         self.reservoir_overflow = 0
  
     def update_state(self, runoff, demand):
-        """
+        # Calculate tentative new storage after runoff and demand
         reservoir_stor = self.reservoir_stor + runoff - demand
-        if reservoir_stor > self.reservoir_cap:
-            self.reservoir_overflow = reservoir_stor - self.reservoir_cap
-            reservoir_stor = self.reservoir_cap
-        elif reservoir_stor > demand:
-            self.deficit = 0.0
-            self.reservoir_overflow = 0
-        elif reservoir_stor > 0 and reservoir_stor <= demand:
-            self.deficit = demand - reservoir_stor
-            self.reservoir_overflow = 0
-        elif reservoir_stor <= 0:
-            self.deficit = demand
-            reservoir_stor = 0.0
-            self.reservoir_overflow = 0
-        self.reservoir_stor = reservoir_stor
-        """
-        available = self.reservoir_stor + runoff  # total available water
-        reservoir_stor = available - demand       # after demand
 
         if reservoir_stor > self.reservoir_cap:
-            # overflow happens
+            # Overflow
             self.reservoir_overflow = reservoir_stor - self.reservoir_cap
             reservoir_stor = self.reservoir_cap
             self.deficit = 0.0
         elif reservoir_stor >= 0:
-            # demand fully met, no overflow
-            self.reservoir_overflow = 0.0
+            # Demand fully met, no overflow
             self.deficit = 0.0
-        else:
-            # demand not met, deficit > 0
             self.reservoir_overflow = 0.0
-            self.deficit = -reservoir_stor  # unmet demand = positive number
+        else:
+            # Demand not fully met, deficit is shortfall
+            self.deficit = -reservoir_stor  # positive deficit amount
             reservoir_stor = 0.0
+            self.reservoir_overflow = 0.0
 
         self.reservoir_stor = reservoir_stor
-        
