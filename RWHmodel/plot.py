@@ -224,8 +224,20 @@ def plot_run_coverage(
     else: # Multi-demand and multi-reservoir case
         c = ax1.pcolormesh(df.columns.astype(float), df.index, df.values.astype(float) * 100, cmap=cmap, norm=norm)
         cbar = plt.colorbar(c, label='Yearly demand coverage by reservoir (%)')
-        cbar.set_ticks=np.linspace(0, 100, 6)
-        plt.xticks(ticks=x_labels, labels=x_labels)
+        cbar.set_ticks = np.linspace(0, 100, 6)
+
+        # Limit number of x-axis ticks to max 15, evenly spaced
+        x_vals = df.columns.astype(float)
+        if len(x_vals) > 15:
+            tick_indices = np.linspace(0, len(x_vals) - 1, 15, dtype=int)
+        else:
+            tick_indices = np.arange(len(x_vals))
+        tick_positions = x_vals[tick_indices]
+        tick_labels = np.round(tick_positions, 0).astype(int)
+
+        plt.xticks(ticks=tick_positions, labels=tick_labels, rotation=0, ha='center')
+        ax1.set_xlim(left=0)  # Ensure x-axis starts at 0
+
         plt.xlabel(f'Specific demand [{unit}/year]')
         plt.ylabel(f'Specific reservoir capacity [{unit}]')
     
