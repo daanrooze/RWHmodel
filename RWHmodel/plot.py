@@ -236,7 +236,7 @@ def plot_run_coverage(
         tick_labels = np.round(tick_positions, 0).astype(int)
 
         plt.xticks(ticks=tick_positions, labels=tick_labels, rotation=0, ha='center')
-        ax1.set_xlim(left=0)  # Ensure x-axis starts at 0
+        ax1.set_xlim(left=0)
 
         plt.xlabel(f'Specific demand [{unit}/year]')
         plt.ylabel(f'Specific reservoir capacity [{unit}]')
