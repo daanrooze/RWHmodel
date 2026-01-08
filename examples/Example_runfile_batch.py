@@ -15,7 +15,8 @@ def main():
         #timestep = 86400,
         #t_start = "2003-04-01",
         #t_end = "2005-7-31",
-        unit = "mm"
+        unit = "mm",
+        runoff_source = "model"
         )
     
     testmodel.batch_run(method="consecutive_timesteps", log=True, save=False)
