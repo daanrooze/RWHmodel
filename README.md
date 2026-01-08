@@ -48,13 +48,15 @@ For basic usage of the tool, follow these steps:
 ## Use cases
 *Disclaimer: This model has not been thoroughly tested. For developers, not all tests are operational.*
 ### Example: single model run
-If the user wants to run a single simulation, to instance to assess the dynamics of a particular irrigation system, the first step is to correctly set up the **setup.toml** file with general characteristics.
+If the user wants to run a single simulation, to instance to assess the dynamics of a particular irrigation system with an open reservoir, the first step is to correctly set up the **setup.toml** file with general characteristics.
 
-The receiving surface area has a size of 60 m2 and the interception capacity of the receiving surface is estimated to be 2 mm. The *specific* reservoir capacity is estimated to be 15 mm (900 liters / 60 m2 surface area = 15 mm). The **setup.toml** file should contain the following parameters:
+The receiving surface area has a size of 60 m2 and the interception capacity of the receiving surface is estimated to be 2 mm. The *specific* reservoir capacity is estimated to be 15 mm (900 liters / 60 m2 connected surface area = 15 mm). The reservoir is an open pond system with a surface area of 20 m2 and is prone to evaporation and precipitation. For open reservoirs, the surface area is required to calculate the effects of direct precipitation and evaporation. Otherwise, all depth-related values in mm are related to the connected surface area. The **setup.toml** file should contain the following parameters:
 ```
-srf_area = 60
+connected_srf_area = 60
 int_cap = 2
+reservoir_type = "open"
 reservoir_cap = 15
+reservoir_srf_area = 20
 ```
 
 The next step is to initiate the model with the given parameters as arguments:
@@ -80,7 +82,8 @@ model = RWHmodel.Model(
         demand_fn = r"C:\Users\example_case\input\demand_daily.csv",
         reservoir_initial_state = 0.75,
         timestep = 86400,
-        unit = "mm"
+        unit = "mm",
+        runoff_source = "model"
 )
 ```
 
@@ -126,11 +129,11 @@ model = RWHmodel.Model(
         setup_fn = r"C:\Users\example_case\input\setup.toml",
         forcing_fn = r"C:\Users\example_case\input\forcing_daily.csv",
         demand_fn = r"C:\Users\example_case\input\demand_daily.csv",
-        runoff_source = "user",       # Use user-provided runoff
-        user_runoff = user_runoff,    # Supply the runoff Series
         reservoir_initial_state = 0.75,
         timestep = 86400,
-        unit = "mm"
+        unit = "mm",
+        runoff_source = "user",       # Use user-provided runoff
+        user_runoff = user_runoff     # Supply the runoff Series
 )
 ```
 
@@ -158,8 +161,9 @@ The threshold (‘norm’) for which the industry has to obtain water from other
 ```
 threshold = 48
 T_return_list = [1,2,5,10,20,50,100]
-srf_area = 3500
+connected_srf_area = 3500
 int_cap = 3
+reservoir_type = "closed"
 ```
 
 The next step is to initiate the model with the given parameters as arguments:
