@@ -75,11 +75,11 @@ def check_variables(
     # List of required variables
     if mode == "single":
         variables = [
-            'srf_area', 'int_cap', 'reservoir_cap', 'shift', 'perc_constant'
+            'connected_srf_area', 'int_cap', 'reservoir_cap', 'reservoir_type', 'shift', 'perc_constant'
         ]
     if mode == "batch":
         variables = [
-            'srf_area', 'int_cap', 'threshold', 'T_return_list', 'shift', 'perc_constant'
+            'connected_srf_area', 'int_cap', 'reservoir_type', 'threshold', 'T_return_list', 'shift', 'perc_constant'
         ]
 
     # List to store missing variables

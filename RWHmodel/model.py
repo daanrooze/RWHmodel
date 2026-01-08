@@ -7,7 +7,7 @@ import toml
 from tqdm import tqdm
 from pathlib import Path
 
-from RWHmodel.reservoir import Reservoir
+from RWHmodel.reservoir import Reservoir, ReservoirOpen
 from RWHmodel.timeseries import Demand, Forcing
 from RWHmodel.hydro_model import HydroModel
 from RWHmodel.utils import makedir, check_variables, convert_mm_to_m3, colloquial_date_text
@@ -188,21 +188,30 @@ class Model(object):
         if (self.demand.data.max() > self.config['reservoir_cap']).any():
             print("Warning: maximum demand is greater than the reservoir capacity.")
 
-        # Initiate reservoir
-        self.reservoir = Reservoir(
-            reservoir_cap = self.config['reservoir_cap'],
-            reservoir_stor = self.config['reservoir_cap'],
-            srf_area = self.config['srf_area'],
-            unit = self.unit
-        )
         # Set fraction of initial reservoir storage
         self.reservoir_initial_state = reservoir_initial_state
         # Check if percentage of reservoir_initial_state is not greater than 1
         if self.reservoir_initial_state > 1:
             raise ValueError("Provide initial reservoir state as fraction of reservoir capacity (between 0 and 1).")
-        # Update initial reservoir capacity
-        self.reservoir.reservoir_stor = self.reservoir.reservoir_cap * self.reservoir_initial_state
-
+        
+        # Initiate reservoir
+        if self.config["reservoir_type"] == "open":
+            self.reservoir = ReservoirOpen(
+                reservoir_cap = self.config['reservoir_cap'],
+                reservoir_stor = self.config['reservoir_cap'] * self.reservoir_initial_state,
+                connected_srf_area = self.config['connected_srf_area'],
+                reservoir_srf_area = self.config['reservoir_srf_area'],
+                unit = self.unit
+            )
+        else:
+            self.reservoir = Reservoir(
+                reservoir_cap = self.config['reservoir_cap'],
+                reservoir_stor = self.config['reservoir_cap'] * self.reservoir_initial_state,
+                connected_srf_area = self.config['connected_srf_area'],
+                unit = self.unit
+            )
+        
+        # Validate runoff setup
         self._validate_runoff_setup()
         
     def setup_from_toml(self, setup_fn):
@@ -289,7 +298,13 @@ class Model(object):
 
         # Run reservoir model per timestep
         for i in range(0, len(net_precip)): # Start from timestep = 0 to reflect state change at the end of the timestep
-            self.reservoir.update_state(runoff = runoff[i], demand = demand_array.iloc[i])
+            #self.reservoir.update_state(runoff = runoff[i], demand = demand_array.iloc[i]) #TODO: remove line afterwards
+            if isinstance(self.reservoir, ReservoirOpen):
+                # Use runoff from connected surface + direct net_precip on reservoir
+                self.reservoir.update_state(runoff[i], demand_array.iloc[i], net_precip[i])
+            else:
+                # Standard reservoir
+                self.reservoir.update_state(runoff[i], demand_array.iloc[i])
             reservoir_stor[i] = self.reservoir.reservoir_stor
             reservoir_overflow[i] = self.reservoir.reservoir_overflow
             deficit[i] = self.reservoir.deficit
@@ -319,11 +334,11 @@ class Model(object):
         
         # Convert back to desired units
         if self.unit == "m3":
-            df = convert_mm_to_m3(df = df, col = "reservoir_stor", surface_area = self.config["srf_area"])
-            df = convert_mm_to_m3(df = df, col = "reservoir_overflow", surface_area = self.config["srf_area"])
-            df = convert_mm_to_m3(df = df, col = "demand", surface_area = self.config["srf_area"])
-            df = convert_mm_to_m3(df = df, col = "deficit", surface_area = self.config["srf_area"])
-            self.demand.data = convert_mm_to_m3(df = self.demand.data, col = "demand", surface_area = self.config["srf_area"])
+            df = convert_mm_to_m3(df = df, col = "reservoir_stor", surface_area = self.config["connected_srf_area"])
+            df = convert_mm_to_m3(df = df, col = "reservoir_overflow", surface_area = self.config["connected_srf_area"])
+            df = convert_mm_to_m3(df = df, col = "demand", surface_area = self.config["connected_srf_area"])
+            df = convert_mm_to_m3(df = df, col = "deficit", surface_area = self.config["connected_srf_area"])
+            self.demand.data = convert_mm_to_m3(df = self.demand.data, col = "demand", surface_area = self.config["connected_srf_area"])
         
         # Calculate summarized results
         demand_deficit = df['deficit'].sum()
@@ -396,12 +411,21 @@ class Model(object):
             for demand in self.config["demand_lst"]:
 
                 # Re-initiate Reservoir for each run
-                self.reservoir = Reservoir(
-                    reservoir_cap = reservoir_cap,
-                    reservoir_stor = self.reservoir_initial_state * reservoir_cap,
-                    srf_area = self.config['srf_area'],
-                    unit = self.unit
-                )
+                if self.config["reservoir_type"] == "open":
+                    self.reservoir = ReservoirOpen(
+                        reservoir_cap = self.config['reservoir_cap'],
+                        reservoir_stor = self.config['reservoir_cap'] * self.reservoir_initial_state,
+                        connected_srf_area = self.config['connected_srf_area'],
+                        reservoir_srf_area = self.config['reservoir_srf_area'],
+                        unit = self.unit
+                    )
+                else:
+                    self.reservoir = Reservoir(
+                        reservoir_cap = self.config['reservoir_cap'],
+                        reservoir_stor = self.config['reservoir_cap'] * self.reservoir_initial_state,
+                        connected_srf_area = self.config['connected_srf_area'],
+                        unit = self.unit
+                    )
 
                 # Re-initiate Demand
                 self.demand = Demand(
