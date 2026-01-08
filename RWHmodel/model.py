@@ -75,6 +75,13 @@ class Model(object):
             Calculation unit for the reservoir size and demand per timestep: 'mm' or 'm3'.
             Ensure that both reservoir and demand timeseries are in the same and correct unit.
             Default is 'mm'.
+        runoff_source : str, optional
+            Source of runoff input. Use 'model' to calculate runoff internally, or 'user'
+            to provide an external runoff timeseries. Default is 'model'.
+        user_runoff : pandas.Series or array-like, optional
+            User-provided runoff timeseries used when runoff_source is 'user'. Must match
+            the forcing and demand timeseries in length and timestep, and be expressed in
+            mm over the connected surface area.
 
         Returns
         -------
