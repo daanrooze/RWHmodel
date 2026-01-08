@@ -7,7 +7,7 @@ import toml
 from tqdm import tqdm
 from pathlib import Path
 
-from RWHmodel.reservoir import Reservoir, ReservoirOpen, ReservoirGroundwater
+from RWHmodel.reservoir import Reservoir, ReservoirOpen
 from RWHmodel.timeseries import Demand, Forcing
 from RWHmodel.hydro_model import HydroModel
 from RWHmodel.utils import makedir, check_variables, convert_mm_to_m3, colloquial_date_text
@@ -303,7 +303,7 @@ class Model(object):
                 # Use runoff from connected surface + direct net_precip on reservoir
                 self.reservoir.update_state(runoff[i], demand_array.iloc[i], net_precip[i])
             else:
-                # Standard or groundwater reservoir uses only runoff
+                # Standard reservoir
                 self.reservoir.update_state(runoff[i], demand_array.iloc[i])
             reservoir_stor[i] = self.reservoir.reservoir_stor
             reservoir_overflow[i] = self.reservoir.reservoir_overflow
