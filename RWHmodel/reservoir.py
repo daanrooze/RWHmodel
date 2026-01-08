@@ -80,47 +80,29 @@ class ReservoirOpen(Reservoir):
             self.reservoir_srf_area / self.connected_srf_area
         )
 
-        # Update tentative storage
-        reservoir_stor = (
+        # Step 1: apply non-demand fluxes
+        storage = (
             self.reservoir_stor
             + runoff
             + net_precip_equiv
-            - demand
         )
 
+        # Step 2: evaporation cannot remove water below zero
+        storage = max(storage, 0.0)
+
+        # Step 3: satisfy demand
+        if storage >= demand:
+            reservoir_stor = storage - demand
+            self.deficit = 0.0
+        else:
+            reservoir_stor = 0.0
+            self.deficit = demand - storage
+
+        # Step 4: handle overflow
         if reservoir_stor > self.reservoir_cap:
             self.reservoir_overflow = reservoir_stor - self.reservoir_cap
             reservoir_stor = self.reservoir_cap
-            self.deficit = 0.0
-        elif reservoir_stor >= 0:
-            self.reservoir_overflow = 0.0
-            self.deficit = 0.0
         else:
-            self.deficit = -reservoir_stor
             self.reservoir_overflow = 0.0
-            reservoir_stor = 0.0
 
         self.reservoir_stor = reservoir_stor
-
-
-
-class ReservoirGroundwater(Reservoir):
-    """Reservoir with a groundwater connection, losing a fraction of storage per timestep."""
-    def __init__(self, reservoir_cap, reservoir_stor=0.0, srf_area=None, unit="mm", gw_loss_factor=0.0):
-        super().__init__(reservoir_cap, reservoir_stor, srf_area, unit)
-        self.gw_loss_factor = gw_loss_factor  # fraction of storage lost per timestep
-
-    def update_state(self, runoff, demand):
-        # Add runoff
-        self.reservoir_stor += runoff
-        # Apply groundwater loss
-        self.reservoir_stor *= (1 - self.gw_loss_factor)
-        # Handle overflow and deficit
-        if self.reservoir_stor > self.reservoir_cap:
-            self.reservoir_overflow = self.reservoir_stor - self.reservoir_cap
-            self.reservoir_stor = self.reservoir_cap
-        else:
-            self.reservoir_overflow = 0.0
-
-        self.deficit = max(0, demand - self.reservoir_stor)
-        self.reservoir_stor = max(0, self.reservoir_stor - demand)
