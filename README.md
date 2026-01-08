@@ -95,6 +95,60 @@ Plot model results using the following command:
 model.plot(plot_type="run")
 ```
 Figure plots are stored in: **root/output/figures**
+### Example: using user-provided runoff
+
+If the user wants to run the model using observed or externally simulated runoff, instead of calculating it from net precipitation, they can provide a runoff file. Suppose we have a runoff timeseries file **user_runoff.csv** with the following format:
+
+```
+date,runoff
+2000-01-01,1.2
+2000-01-02,0.0
+2000-01-03,0.8
+...
+```
+
+The runoff column must have the same number of timesteps as the forcing file. The `date` column is optional if using a pandas Series directly.
+
+The model can then be initiated as follows:
+
+```python
+import pandas as pd
+import RWHmodel
+
+# Load user runoff
+user_runoff = pd.read_csv(r"C:\Users\example_case\input\user_runoff.csv")["runoff"]
+
+# Initiate model with user-supplied runoff
+model = RWHmodel.Model(
+        root = r"C:\Users\example_case",
+        name = "irrigation_user_runoff",
+        mode = "single",
+        setup_fn = r"C:\Users\example_case\input\setup.toml",
+        forcing_fn = r"C:\Users\example_case\input\forcing_daily.csv",
+        demand_fn = r"C:\Users\example_case\input\demand_daily.csv",
+        runoff_source = "user",       # Use user-provided runoff
+        user_runoff = user_runoff,    # Supply the runoff Series
+        reservoir_initial_state = 0.75,
+        timestep = 86400,
+        unit = "mm"
+)
+```
+
+Call the run function:
+
+```python
+model.run()
+```
+
+Results are stored in: **root/output/runs**
+
+Plot the results:
+
+```python
+model.plot(plot_type="run")
+```
+
+Figures are stored in: **root/output/figures**
 ### Example: batch model run
 A batch run allows the user to run a “scenario-space” of possible demand patterns and reservoir sizes. Individual model results can be saved to .csv; the ‘coverage’ table showing how much of the *total* water demand can be supplied for each reservoir-demand combination is saved to .csv automatically.
 
@@ -266,6 +320,9 @@ The initialization function takes the following arguments:
 - **t_start**: Optional, default is first timestep of forcing timeseries. Start time to clip the timeseries for modelling.
 - **t_end**: Optional, default is final timestep of forcing timeseries. End time to clip the timeseries for modelling.
 - **unit**: Optional, default is ‘mm’. Calculation unit for the reservoir size and demand per timestep: ‘mm’ or ‘m3’. Ensure that both reservoir and demand timeseries are in the same and correct unit.
+- **runoff_source**: Optional, default is "model". Determines whether the runoff is calculated internally using the HydroModel ("model") or provided by the user ("user").
+- **user_runoff**: Optional, default is None. User-supplied runoff timeseries (pandas Series, NumPy array, or list) that must match the length of the forcing data. Only used if `runoff_source="user"`.
+
 ### Single run
 To perform a single model run, call the **run** function.
 ```python

@@ -33,6 +33,8 @@ class Model(object):
         t_start: Optional[str] = None,
         t_end: Optional[str] = None,
         unit: str = "mm",
+        runoff_source: str = "model",
+        user_runoff: Optional[pd.Series] = None
     ):
         """
         Initialize the model class by providing mandatory and optional arguments.
@@ -92,6 +94,9 @@ class Model(object):
         self.mode = mode
         
         self.unit = unit
+
+        self.runoff_source = runoff_source
+        self.user_runoff = user_runoff
         
         # Setup model run name
         if len(name)>0:
@@ -197,6 +202,8 @@ class Model(object):
             raise ValueError("Provide initial reservoir state as fraction of reservoir capacity (between 0 and 1).")
         # Update initial reservoir capacity
         self.reservoir.reservoir_stor = self.reservoir.reservoir_cap * self.reservoir_initial_state
+
+        self._validate_runoff_setup()
         
     def setup_from_toml(self, setup_fn):
         """
@@ -213,6 +220,44 @@ class Model(object):
             area_chars = toml.load(f)
         self.config = area_chars
 
+    def _validate_runoff_setup(self):
+        if self.runoff_source == "model":
+            if self.hydro_model is None:
+                raise ValueError(
+                    "runoff_source='model' requires a hydro_model instance"
+                )
+
+        elif self.runoff_source == "user":
+            if self.user_runoff is None:
+                raise ValueError(
+                    "runoff_source='user' requires user_runoff data"
+                )
+
+            if len(self.user_runoff) != len(self.forcing.data):
+                raise ValueError(
+                    "user_runoff must have same length as forcing data"
+                )
+
+        else:
+            raise ValueError(
+                "runoff_source must be 'model' or 'user'"
+            )
+
+    def _get_runoff(self, net_precip):
+        if self.runoff_source == "model":
+            return self.hydro_model.calc_runoff(
+                net_precip=net_precip
+            )
+
+        elif self.runoff_source == "user":
+            runoff = (
+                self.user_runoff.to_numpy()
+                if hasattr(self.user_runoff, "to_numpy")
+                else np.asarray(self.user_runoff)
+            )
+
+            int_stor = np.zeros(len(runoff))
+            return int_stor, runoff
 
     def run(
             self,
@@ -240,7 +285,7 @@ class Model(object):
         deficit_timesteps = np.zeros(len(net_precip))
         
         # Run hydro_model per timestep         
-        int_stor, runoff = self.hydro_model.calc_runoff(net_precip=net_precip)   
+        int_stor, runoff = self._get_runoff(net_precip)   
 
         # Run reservoir model per timestep
         for i in range(0, len(net_precip)): # Start from timestep = 0 to reflect state change at the end of the timestep
