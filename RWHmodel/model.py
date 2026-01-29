@@ -420,16 +420,16 @@ class Model(object):
                 # Re-initiate Reservoir for each run
                 if self.config["reservoir_type"] == "open":
                     self.reservoir = ReservoirOpen(
-                        reservoir_cap = self.config['reservoir_cap'],
-                        reservoir_stor = self.config['reservoir_cap'] * self.reservoir_initial_state,
+                        reservoir_cap = reservoir_cap,
+                        reservoir_stor = reservoir_cap * self.reservoir_initial_state,
                         connected_srf_area = self.config['connected_srf_area'],
                         reservoir_srf_area = self.config['reservoir_srf_area'],
                         unit = self.unit
                     )
                 else:
                     self.reservoir = Reservoir(
-                        reservoir_cap = self.config['reservoir_cap'],
-                        reservoir_stor = self.config['reservoir_cap'] * self.reservoir_initial_state,
+                        reservoir_cap = reservoir_cap,
+                        reservoir_stor = reservoir_cap * self.reservoir_initial_state,
                         connected_srf_area = self.config['connected_srf_area'],
                         unit = self.unit
                     )
