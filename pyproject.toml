@@ -41,6 +41,9 @@ classifiers = [
 
 [project.optional-dependencies]
 doc = []
+dev = []
+
+[project.dependency-groups]
 dev = [
     "black>=23.0.0",           # code formatting
     "ruff>=0.1.0",             # code linting
@@ -98,12 +101,3 @@ disallow_untyped_defs = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
-[tool.uv]
-# UV-specific configuration
-dev-dependencies = [
-    "black>=23.0.0",
-    "ruff>=0.1.0",
-    "pre-commit>=3.0.0",
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-]
