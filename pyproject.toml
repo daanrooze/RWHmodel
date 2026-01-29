@@ -38,7 +38,15 @@ classifiers = [
 
 [project.optional-dependencies]
 doc = []
-dev = []
+dev = [
+    "black>=23.0.0",           # code formatting
+    "ruff>=0.1.0",             # code linting
+    "pre-commit>=3.0.0",       # pre-commit hooks
+]
+test = [
+    "pytest>=7.0.0",           # testing framework
+    "pytest-cov>=4.0.0",       # pytest plugin for coverage reports
+]
 
 [project.dependency-groups]
 dev = [
