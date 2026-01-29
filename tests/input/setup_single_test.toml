@@ -1,7 +1,9 @@
-### area characteristics ###
-#   srf_area: Surface area [m2].
+### general characteristics ###
+#   connected_srf_area: Surface area of connected area [m2]. This is the main surface area to relate all flows to.
 #	int_cap: Maximum interception storage capacity of surface [mm].
-#	reserovoir_cap: Reservoir capacity [mm].
+#   reservoir_type: type of reservoir (open or closed to precipitation and evaporation)
+#   reservoir_srf_area: Surface area of the reservoir, if exposed to evaporation and precipitation [m2]
+#	reservoir_cap: Reservoir capacity over connected surface area [mm].
 
 connected_srf_area = 60
 int_cap = 2
