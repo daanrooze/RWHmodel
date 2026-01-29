@@ -11,19 +11,21 @@ authors = [
     {name = "Laura Nougues", email = "laura.nougues@deltares.nl"}
 ]
 dependencies = [
-    "pandas",            # Dataframes
-    "tomli",             # parsing toml files
-    "tomli-w",           # writing toml files
-    "toml",              # parsing toml files
-    "matplotlib",        # plotting
-    "scipy",             # statistical modules
-    "tqdm"               # progress bar
+    "pandas>=1.5.0",           # Dataframes
+    "tomli>=2.0.0;python_version<'3.11'",  # parsing toml files (built-in for 3.11+)
+    "tomli-w>=1.0.0",          # writing toml files
+    "toml>=0.10.2",            # parsing toml files
+    "matplotlib>=3.5.0",       # plotting
+    "scipy>=1.8.0",            # statistical modules
+    "tqdm>=4.62.0"             # progress bar
 ]
 
 version = "0.1.0"
 description = "A flexible model for determining potential for rainwater harvesting"
 
 requires-python = ">=3.9"
+readme = "README.md"
+license = {text = "MIT"}
 classifiers = [
     # https://pypi.python.org/pypi?%3Aaction=list_classifiers
     "Development Status :: 2 - Pre-Alpha",
@@ -31,18 +33,22 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Hydrology",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 [project.optional-dependencies]
 doc = []
 dev = [
-    "black",            # code formatting
-    "ruff",             # code linting
-    "pre-commit",       # pre-commit hooks
+    "black>=23.0.0",           # code formatting
+    "ruff>=0.1.0",             # code linting
+    "pre-commit>=3.0.0",       # pre-commit hooks
 ]
 test = [
-    "pytest>=2.7.3",    # testing framework
-    "pytest-cov",       # pytest plugin for coverage reports
+    "pytest>=7.0.0",           # testing framework
+    "pytest-cov>=4.0.0",       # pytest plugin for coverage reports
 ]
 
 
@@ -91,3 +97,13 @@ disallow_untyped_defs = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv]
+# UV-specific configuration
+dev-dependencies = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.0.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
