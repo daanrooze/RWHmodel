@@ -1,14 +1,17 @@
 ### statistics setup ###
+#   connected_srf_area: Surface area of connected area [m2]. This is the main surface area to relate all flows to.
+#	int_cap: Maximum interception storage capacity of surface [mm].
+#   reservoir_type: type of reservoir (open or closed to precipitation and evaporation)
+#   reservoir_srf_area: Surface area of the reservoir, if exposed to evaporation and precipitation [m2]
 #	threshold: The number of timesteps that the reservoir cannot supply the required demand.
 #	T_return_list: List of return periods that will be used in the analysis.
-#   srf_area: Surface area [m2].
-#	int_cap: Maximum interception storage capacity of surface [mm].
 
+connected_srf_area = 100
+int_cap = 2
+reservoir_type = "closed"
+reservoir_srf_area = 2
 threshold = 3
 T_return_list = [1,2,5,10,20,50,100]
-srf_area = 100
-int_cap = 2
-
 
 ### seasonal variation parameters ###
 #   shift: the phase of the sinus curves

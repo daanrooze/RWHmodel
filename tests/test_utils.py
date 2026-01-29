@@ -41,11 +41,11 @@ def test_makedir_existing_directory(tmp_path):
     assert test_dir.exists()
 
 @pytest.mark.parametrize("mode,config,demand_transformation,should_raise,missing_vars", [
-    ("single", {}, False, True, ['srf_area', 'int_cap', 'reservoir_cap']),
-    ("single", {'srf_area':1, 'int_cap':1, 'reservoir_cap':1}, False, False, []),
-    ("single", {'srf_area':1, 'int_cap':1}, True, True, ['reservoir_cap', 'shift', 'perc_constant']),
-    ("batch", {'srf_area':1, 'int_cap':1, 'threshold':1, 'T_return_list':[1], 'shift':1, 'perc_constant':1}, False, False, []),
-    ("batch", {'srf_area':1, 'int_cap':1, 'threshold':1, 'T_return_list':[1]}, True, True, ['shift', 'perc_constant']),
+    ("single", {}, False, True, ['connected_srf_area', 'int_cap', 'reservoir_cap', 'reservoir_type']),
+    ("single", {'connected_srf_area':1, 'int_cap':1, 'reservoir_cap':1, 'reservoir_type':'closed'}, False, False, []),
+    ("single", {'connected_srf_area':1, 'int_cap':1, 'reservoir_type':'closed'}, True, True, ['reservoir_cap', 'shift', 'perc_constant']),
+    ("batch", {'connected_srf_area':1, 'int_cap':1, 'reservoir_type':'closed', 'threshold':1, 'T_return_list':[1], 'shift':1, 'perc_constant':1}, False, False, []),
+    ("batch", {'connected_srf_area':1, 'int_cap':1, 'reservoir_type':'closed', 'threshold':1, 'T_return_list':[1]}, True, True, ['shift', 'perc_constant']),
 ])
 def test_check_variables(mode, config, demand_transformation, should_raise, missing_vars):
     if should_raise:
