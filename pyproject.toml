@@ -23,7 +23,7 @@ dependencies = [
 version = "0.1.0"
 description = "A flexible model for determining potential for rainwater harvesting"
 
-requires-python = ">=3.9"
+requires-python = ">=3.12,<3.13"
 readme = "README.md"
 license = {text = "MIT"}
 classifiers = [
@@ -33,9 +33,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Hydrology",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 
