@@ -171,7 +171,7 @@ def plot_run_coverage(
         name,
         run_fn,  # Path to run summary output file
         unit,
-        class_boundaries=[0, 20, 40, 60, 80, 100]  # Default boundaries for 5 classes
+        class_boundaries=None
     ) -> None:
     """
     Run coverage plotting funtion.
@@ -195,6 +195,9 @@ def plot_run_coverage(
     df = run_fn.set_index('reservoir_cap')
     df.index.name = None
     
+    if class_boundaries is None:
+        class_boundaries = [0, 20, 40, 60, 80, 100] # Default boundaries for 5 classes
+
     try:
         x_labels = np.round(pd.to_numeric(df.columns, errors='coerce'), 2)
     except ValueError:

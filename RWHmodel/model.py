@@ -630,7 +630,8 @@ class Model(object):
                 root = self.root,
                 name = self.name,
                 run_fn = fn,
-                unit = self.unit
+                unit = self.unit,
+                **kwargs
             )
         
         if plot_type in ["system_curve", "saving_curve"]:
