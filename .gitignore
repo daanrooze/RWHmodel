@@ -134,6 +134,12 @@ ENV/
 env.bak/
 venv.bak/
 
+# UV virtual environments
+.venv/
+
+# UV lock file (commit to version control for reproducibility)
+# uv.lock
+
 # Spyder project settings
 .spyderproject
 .spyproject

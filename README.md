@@ -2,17 +2,33 @@
 # RWHmodel | An exploratory model to assess the potential of rainwater harvesting.
 
 # Installation Guide
-Use conda/mamba to install the environment for development:
 
+## Quick Start (Recommended: UV)
+
+The fastest way to set up the development environment is with [uv](https://docs.astral.sh/uv/):
+
+```bash
+# Install uv if you haven't already
+pip install uv
+
+# Set up the environment
+uv sync
+
+# Activate the virtual environment
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
+
+## Alternative: Conda Installation
+
+```bash
 conda env create -f environment.yml
-```
-
-Then activate the created environment (called ‘RWHmodel’) and perform a developer install with pip:
-
-```
+conda activate RWHmodel
 pip install -e .
 ```
+
+## Full Setup Instructions
+
+For detailed installation steps, development workflows, and troubleshooting, see [SETUP_GUIDE.md](SETUP_GUIDE.md).
 
 # Introduction
 ## Global relevance
