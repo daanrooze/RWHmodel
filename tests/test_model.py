@@ -1,7 +1,10 @@
 import os
+from types import SimpleNamespace
+
 import pandas as pd
 import pytest
 from RWHmodel import Model
+from RWHmodel.reservoir import Reservoir
 
 # Root folder for tests
 TEST_ROOT = "C:/repos/RWHmodel/tests"
@@ -64,3 +67,37 @@ def test_model_batch_run():
 
     assert hasattr(model, "statistics")
     assert isinstance(model.statistics, pd.DataFrame)
+
+
+@pytest.mark.parametrize(
+    "runoff, expected_events",
+    [
+        ([5, 0, 0], [0, 0, 2]),
+        ([0, 0, 5], [0, 0, 2]),
+        ([0, 0, 0], [0, 0, 3]),
+        ([5, 5, 5], [0, 0, 0]),
+        ([0, 5, 0], [0, 1, 1]),
+        ([5], [0]),
+        ([0], [1]),
+        ([], []),
+    ],
+)
+def test_model_run_deficit_events(runoff, expected_events):
+    index = pd.date_range("2000-01-01", periods=len(runoff))
+    model = Model.__new__(Model)
+    model.forcing = SimpleNamespace(
+        data=pd.DataFrame({"precip": 0.0, "pet": 0.0}, index=index)
+    )
+    model.demand = SimpleNamespace(
+        data=pd.DataFrame({"demand": 5.0}, index=index)
+    )
+    model.reservoir = Reservoir(reservoir_cap=1.0, reservoir_stor=0.0)
+    model.runoff_source = "user"
+    model.user_runoff = pd.Series(runoff, index=index, dtype=float)
+    model.unit = "mm"
+    model.mode = "batch"
+
+    results = model.run(save=False)
+
+    assert results["deficit_timesteps"].tolist() == expected_events
+    assert results["deficit"].gt(0).tolist() == [flow < 5 for flow in runoff]

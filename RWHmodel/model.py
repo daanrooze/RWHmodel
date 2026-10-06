@@ -315,20 +315,15 @@ class Model(object):
             reservoir_stor[i] = self.reservoir.reservoir_stor
             reservoir_overflow[i] = self.reservoir.reservoir_overflow
             deficit[i] = self.reservoir.deficit
-            # Tracking the timesteps for which the reservoir does not suffice.
-            if reservoir_stor[i] >= demand_array.iloc[i]:
-                dry_timestep[i] = 0
-            elif reservoir_stor[i] < demand_array.iloc[i]:
-                dry_timestep[i] = dry_timestep[i-1] + 1
-            if dry_timestep[i-1] != 0 and dry_timestep[i] == 0:
-                deficit_timesteps[i] = dry_timestep[i-1]
+            previous_dry_steps = dry_timestep[i - 1] if i > 0 else 0
+            if deficit[i] > 0:
+                dry_timestep[i] = previous_dry_steps + 1
             else:
-                deficit_timesteps[i] = 0
+                dry_timestep[i] = 0
+                deficit_timesteps[i] = previous_dry_steps
         
-        # Add total number of deficit_timesteps if deficit never reaches 0 (to prevent false reporting of deficit timesteps)
-        if min(deficit) != 0:
-            # Change the last value of deficit_timesteps to the length of the precipitation timeseries
-            deficit_timesteps[-1] = len(net_precip)
+        if len(deficit_timesteps) > 0 and dry_timestep[-1] > 0:
+            deficit_timesteps[-1] = dry_timestep[-1]
 
         # Convert to dataframe
         df_data = {
